@@ -11,7 +11,6 @@ let endPoint = {
 
 let folder = { 
     RemotePath = "/alfresco/webdav/Validate"
-    LocalPath = "./Resource"
     LastCheck = DateTime.MinValue
 }
 
