@@ -1,5 +1,6 @@
 #r "../../Source/EasySyncClient/bin/Debug/EasySyncClient.dll"
 
 open EasySyncClient
+open EasySyncClient.Client
 
-SettingsManger.addFolder "/Users/wk/Source/project/easy-sync/EasySyncClient/Resource"
+SettingsManager.addFolder "/Users/wk/Source/project/easy-sync/EasySyncClient/Resource"

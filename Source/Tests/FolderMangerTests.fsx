@@ -1,6 +1,8 @@
 #r "../../Source/EasySyncClient/bin/Debug/EasySyncClient.dll"
 
-open EasySyncClient
+open EasySyncClient.Client
+open EasySyncClient.Models
+open EasySyncClient.SettingsManager
 open System
 
 let endPoint = {

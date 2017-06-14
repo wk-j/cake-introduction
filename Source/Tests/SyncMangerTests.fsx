@@ -1,7 +1,7 @@
 
 #r "../../Source/EasySyncClient/bin/Debug/EasySyncClient.dll"
 
-open EasySyncClient
+open EasySyncClient.Client
 open System
 
 let manager = SyncManger()
