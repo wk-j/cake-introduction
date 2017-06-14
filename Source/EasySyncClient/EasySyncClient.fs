@@ -21,17 +21,38 @@ type SyncFolder = {
     LastCheck : DateTime
 }
 
+type ConfigFile = 
+    | EndPoint
+    | Folders
+    | Config of String
+
 module SettingsManger = 
-    let private loadHomeSetting fileName (defaultObject: 'a) = 
-        let dir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
-        let file = Path.Combine(dir, fileName)
-        if File.Exists file then
-            let content = File.ReadAllText file
+    let dir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
+
+    let configPath = function
+        | EndPoint -> Path.Combine(dir, ".easy-sync-endpoint")
+        | Folders -> Path.Combine(dir, ".easy-sync-folders")
+        | Config path -> Path.Combine(path, ".easy-sync-config")
+
+    let private writeConfig path object = 
+        let path = configPath path
+        let json = JsonConvert.SerializeObject(object)
+        File.WriteAllText(path, json)
+
+        printfn "Path = %s" path
+        printfn "Content = %s" json
+
+    let private loadHomeSetting (path:ConfigFile) (defaultObject: 'a) = 
+        let fullPath = configPath path
+        if File.Exists fullPath then
+            let content = File.ReadAllText fullPath
             JsonConvert.DeserializeObject<'a>(content)
         else
-            let json = JsonConvert.SerializeObject(defaultObject)
-            File.WriteAllText(file, json)
+            writeConfig path defaultObject
             defaultObject
+
+    let saveFolders folder = 
+        ()
 
     let loadEndPoint() = 
         let endPoint = { 
@@ -39,15 +60,29 @@ module SettingsManger =
             User = "admin"
             Password = "admin"
         }
-        loadHomeSetting ".easy-sync-endpoint" endPoint
+
+        loadHomeSetting EndPoint endPoint
+
+    let loadFolder folder = 
+        let configFile = configPath (Config folder)
+        if File.Exists configFile then
+            let content = File.ReadAllText configFile
+            JsonConvert.DeserializeObject<SyncFolder>(content) |> Some
+        else
+            None
 
     let loadFolders() =
         let folders = {
             Folders = []
         }
-        loadHomeSetting ".easy-sync-folders" folders
+        loadHomeSetting Folders folders
 
-type SyncManager(endPoint, folder) as this =
+    let addFolder path = 
+        let folder = loadFolders()
+        let newFolder = { folder with Folders = path :: folder.Folders }
+        writeConfig Folders newFolder
+
+type FolderManager(endPoint, folder) as this =
 
     let timer = new System.Timers.Timer(1000.0)    
     do 
@@ -68,3 +103,24 @@ type SyncManager(endPoint, folder) as this =
     interface IDisposable with
         member this.Dispose() =
             timer.Dispose()
+
+type SyncManger() = 
+
+    member this.CreateFolderManager(endPoint, folder) = 
+        new FolderManager(endPoint, folder)
+
+    member this.StartSync() = 
+        let endPoint = SettingsManger.loadEndPoint()
+
+        let folders = 
+            SettingsManger.loadFolders().Folders 
+            |> List.map (SettingsManger.loadFolder)
+            |> List.choose id
+
+        let folderManagers = 
+            folders 
+            |> List.map (fun x -> this.CreateFolderManager(endPoint, x))
+
+        folderManagers |> List.iter (fun x -> x.Start())
+
+        ()

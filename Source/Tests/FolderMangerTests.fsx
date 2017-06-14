@@ -14,7 +14,7 @@ let folder = {
     LastCheck = DateTime.MinValue
 }
 
-let mgr = new SyncManager(endPoint, folder)
+let mgr = new FolderManager(endPoint, folder)
 mgr.Start()
 
 Console.ReadLine()
