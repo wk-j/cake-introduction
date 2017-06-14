@@ -6,9 +6,9 @@ open EasySyncClient.Models
 open Newtonsoft.Json
 open System.Linq
 
-let dir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
+let private dir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
 
-let configPath = function
+let private configPath = function
     | EndPoint -> Path.Combine(dir, ".easy-sync-endpoint")
     | Folders -> Path.Combine(dir, ".easy-sync-folders")
     | Config path -> Path.Combine(path, ".easy-sync-config")
@@ -30,9 +30,6 @@ let private loadHomeSetting (path:ConfigFile) (defaultObject: 'a) =
         writeConfig path defaultObject
         defaultObject
 
-let saveFolders folder = 
-    ()
-
 let loadEndPoint() = 
     let endPoint = { 
         Url = "http://192.168.0.109:8080"
@@ -42,11 +39,24 @@ let loadEndPoint() =
 
     loadHomeSetting EndPoint endPoint
 
-let loadFolder folder = 
-    let configFile = configPath (Config folder)
+let touceFolderConfig path = 
+    let path = configPath (Config path)
+    File.SetLastWriteTime(path, DateTime.Now)
+
+let getTouchDate path = 
+    let path = configPath (Config path)
+    File.GetLastWriteTime(path)
+
+let writeFolderConfig config = 
+    writeConfig (Config config.LocalPath) config
+
+let loadFolderConfig path = 
+    let configFile = configPath (Config path)
     if File.Exists configFile then
         let content = File.ReadAllText configFile
-        JsonConvert.DeserializeObject<SyncFolder>(content) |> Some
+        let folder = JsonConvert.DeserializeObject<SyncFolder>(content) 
+        { folder with LocalPath = path }
+        |> Some
     else
         None
 

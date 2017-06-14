@@ -13,8 +13,8 @@ type SyncFolders = {
 }
 
 type SyncFolder = {
+    LocalPath : string
     RemotePath : string
-    LastCheck : DateTime
 }
 
 type ConfigFile = 
