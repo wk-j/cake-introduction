@@ -13,7 +13,7 @@ let endPoint = {
 
 let folder = { 
     RemotePath = "/alfresco/webdav/Validate"
-    LastCheck = DateTime.MinValue
+    LocalPath = ""
 }
 
 let mgr = new FolderManager(endPoint, folder)

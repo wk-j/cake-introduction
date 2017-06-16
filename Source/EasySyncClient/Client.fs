@@ -8,13 +8,66 @@ open System.IO
 open EasySyncClient.Models
 open EasySyncClient
 open System.Linq
+open System.Net
+open WebDAVClient
+open System.Threading.Tasks
+
+let splitWith (sep: string) (str: string) = str.Split([| sep |], StringSplitOptions.None)
+let cleanPath (str: string) = str.TrimEnd('/').Replace("//", "/").Replace("\\", "/")
+let toSections (data: string array) = [ for i in 0..data.Length do yield String.concat "/"  <| data.Take(i) ]
+
+type AlfrescoClient(endPoint) as this = 
+
+    let client = Client(NetworkCredential(UserName = endPoint.User, Password = endPoint.Password))
+    do 
+        client.Server <- endPoint.Url
+
+    member this.TryCreateDirectory root section = 
+        let full = root + "/" + section |> cleanPath
+        async {
+            do! Task.Delay(1000) |> Async.AwaitTask
+            try 
+                printfn "%s" full
+                let! items = client.GetFolder full |> Async.AwaitTask
+                return true
+            with ex ->
+                try 
+                    let last = full |> splitWith "/" |> Array.last
+                    let path = Path.GetDirectoryName full
+                    printfn "%s => %s" path last
+                    client.CreateDir(path, last) |> Async.AwaitTask |> ignore
+                    return true
+                with ex ->
+                    return false
+        } |> Async.RunSynchronously
+
+    member this.TryCreateDirectories root section =
+        async {
+            let full = root + "/" + section |> cleanPath
+            try 
+                let! item = client.GetFolder full |> Async.AwaitTask
+                printfn "%s exist" full
+                return true
+            with ex ->
+                let sections = section |> splitWith "/" |> toSections
+                let rootMap = this.TryCreateDirectory root
+                sections |> List.map rootMap |> ignore
+                return true
+        } |> Async.RunSynchronously
 
 type FolderManager(endPoint, config) as this =
 
     let timer = new System.Timers.Timer(5000.0)    
+
     do 
         timer.AutoReset <- false
         timer.Elapsed.Add(this.Process)
+
+    member private this.Upload(file) = 
+        let full, rel = file
+        let fullPath = config.RemotePath
+        let sections = Path.GetDirectoryName rel  |> splitWith "/"  |> toSections
+        ()
 
     member private this.Process(args) =
         let local = config.LocalPath
@@ -26,15 +79,16 @@ type FolderManager(endPoint, config) as this =
             printfn "%A" DateTime.Now
             SettingsManager.touceFolderConfig  local
 
+        let toRelative (file: string) =
+            file.Replace(local, "")
+
         let findModifyFiles() = 
             let last = SettingsManager.getTouchDate local 
             printfn "%s" local
             Directory.EnumerateFiles(local, "*.txt")
                 |> Seq.map FileInfo
                 |> Seq.filter(fun x -> x.LastWriteTime >= last)
-
-        let toRelative (file: string) =
-            file.Replace(local, "")
+                |> Seq.map(fun x -> (x, x.FullName |> toRelative))
 
         let resume() =
             timer.Start()
@@ -42,10 +96,6 @@ type FolderManager(endPoint, config) as this =
         pause()
 
         let files = findModifyFiles() 
-        let relative = files |> Seq.map (fun x -> x.FullName |> toRelative) 
-        printfn "%A" <| files.ToList()
-        printfn "%A" relative
-
         //touch()
         resume()
 

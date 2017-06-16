@@ -42,5 +42,13 @@ let uploadFile() =
         return result
     }  |> Async.RunSynchronously
 
+let getFolder() =
+    async {
+        let! folder = client.GetFolder("/alfresco/webdav/Validate") |> Async.AwaitTask
+        return folder
+    } |> Async.RunSynchronously
 
-uploadFile() |> printfn "%A"
+
+getFolder() |> printfn "%A"
+
+// uploadFile() |> printfn "%A"
