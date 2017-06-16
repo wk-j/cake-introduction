@@ -21,4 +21,3 @@ type ConfigFile =
     | EndPoint
     | Folders
     | Config of String
-

@@ -11,12 +11,14 @@ open System.Linq
 open System.Net
 open WebDAVClient
 open System.Threading.Tasks
+open NLog
 
 let splitWith (sep: string) (str: string) = str.Split([| sep |], StringSplitOptions.None)
 let cleanPath (str: string) = str.TrimEnd('/').Replace("//", "/").Replace("\\", "/")
 let toSections (data: string array) = [ for i in 0..data.Length do yield String.concat "/"  <| data.Take(i) ]
 
-type AlfrescoClient(endPoint) as this = 
+type AlfrescoClient(endPoint) = 
+    let logger = LogManager.GetCurrentClassLogger()
 
     let client = Client(NetworkCredential(UserName = endPoint.User, Password = endPoint.Password))
     do 
@@ -27,14 +29,14 @@ type AlfrescoClient(endPoint) as this =
         async {
             do! Task.Delay(1000) |> Async.AwaitTask
             try 
-                printfn "%s" full
+                logger.Info("Try to create directory | {0}", full)
                 let! items = client.GetFolder full |> Async.AwaitTask
                 return true
             with ex ->
                 try 
                     let last = full |> splitWith "/" |> Array.last
                     let path = Path.GetDirectoryName full
-                    printfn "%s => %s" path last
+                    logger.Info("Create {0} => {1}", path, last)
                     client.CreateDir(path, last) |> Async.AwaitTask |> ignore
                     return true
                 with ex ->
@@ -46,7 +48,7 @@ type AlfrescoClient(endPoint) as this =
             let full = root + "/" + section |> cleanPath
             try 
                 let! item = client.GetFolder full |> Async.AwaitTask
-                printfn "%s exist" full
+                logger.Info("{0} is exists", full)
                 return true
             with ex ->
                 let sections = section |> splitWith "/" |> toSections
@@ -54,6 +56,33 @@ type AlfrescoClient(endPoint) as this =
                 sections |> List.map rootMap |> ignore
                 return true
         } |> Async.RunSynchronously
+
+    member this.UploadFile (remoteRoot: string) (localRoot: string) (localFile: string) = 
+        let replace (a:string) b (c: string)= c.Replace(a, b)
+
+        if localFile.Contains localRoot then
+            let relative = replace localRoot "" localFile 
+            let path = Path.GetDirectoryName relative
+            let name = Path.GetFileName relative 
+
+            printfn "%s" relative
+            printfn "%s" name
+            printfn "%s"  path
+
+            this.TryCreateDirectories remoteRoot path |> ignore
+            let targetPath = remoteRoot + "/" + path |> cleanPath
+
+            async {
+                let! item =  client.Upload(targetPath, File.OpenRead(localFile), name) |> Async.AwaitTask
+                return item
+            }
+            |> Async.RunSynchronously
+            |> ignore
+
+            true
+
+        else
+            false
 
 type FolderManager(endPoint, config) as this =
 
@@ -76,7 +105,6 @@ type FolderManager(endPoint, config) as this =
             timer.Stop()
 
         let touch() = 
-            printfn "%A" DateTime.Now
             SettingsManager.touceFolderConfig  local
 
         let toRelative (file: string) =
@@ -84,7 +112,6 @@ type FolderManager(endPoint, config) as this =
 
         let findModifyFiles() = 
             let last = SettingsManager.getTouchDate local 
-            printfn "%s" local
             Directory.EnumerateFiles(local, "*.txt")
                 |> Seq.map FileInfo
                 |> Seq.filter(fun x -> x.LastWriteTime >= last)

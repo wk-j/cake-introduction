@@ -36,6 +36,7 @@ let loadEndPoint() =
         User = "admin"
         Password = "admin"
     }
+    
 
     loadHomeSetting EndPoint endPoint
 
