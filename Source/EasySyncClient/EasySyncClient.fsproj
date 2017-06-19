@@ -46,6 +46,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Models.fs" />
+    <Compile Include="ChangeWatcher.fs" />
     <Compile Include="SettingsManager.fs" />
     <Compile Include="Client.fs" />
   </ItemGroup>
