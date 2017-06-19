@@ -16,8 +16,7 @@ open NLog
 module List = 
     let apply (fl : ('a -> 'b) list) (xl : 'a list) =
         [ for f in fl do 
-            for x in xl do
-                yield f x ]
+            for x in xl do yield f x ]
 
 let inline (<*>) f xs = List.apply f xs
 
@@ -109,9 +108,7 @@ type AlfrescoClient(endPoint) =
         } |> Async.RunSynchronously
 
     member this.UploadFile (RemoteRoot remoteRoot) (LocalRoot localRoot) (FullLocalPath localPath) = 
-
         if localPath.Contains localRoot then
-
             async {
                 let path = createRelativePath (LocalRoot localRoot) (FullLocalPath localPath)
                 let remote = RemoteRoot remoteRoot
@@ -125,9 +122,7 @@ type AlfrescoClient(endPoint) =
             }
             |> Async.RunSynchronously
             |> ignore
-
             true
-
         else
             false
 
@@ -147,26 +142,14 @@ type FolderManager(endPoint, config) as this =
 
     member private this.Process(args) =
         let local = config.LocalPath
-
-        let pause() = 
-            timer.Stop()
-
-        let touch() = 
-            SettingsManager.touceFolderConfig  local
-
-        let toRelative (file: string) =
-            file.Replace(local, "")
+        let pause = timer.Stop
+        let resume = timer.Start
 
         let findModifyFiles() = 
-            let last = SettingsManager.getTouchDate local 
+            let last = SettingsManager.getTouchDate (config)
             Directory.EnumerateFiles(local, "*.txt")
                 |> Seq.map FileInfo
                 |> Seq.filter(fun x -> x.LastWriteTime >= last)
-                |> Seq.map(fun x -> (x, x.FullName |> toRelative))
-
-        let resume() =
-            timer.Start()
-
         pause()
 
         let files = findModifyFiles() 
@@ -189,12 +172,9 @@ type SyncManger() =
         new FolderManager(endPoint, folder)
 
     member this.StartSync() = 
-        let endPoint = SettingsManager.loadEndPoint()
-
-        let folders = 
-            SettingsManager.loadFolders().Folders 
-            |> List.map (SettingsManager.loadFolderConfig)
-            |> List.choose id
+        let config = SettingsManager.localConfig()
+        let endPoint = config.EndPoint
+        let folders = config.Folders
 
         let folderManagers = 
             folders 

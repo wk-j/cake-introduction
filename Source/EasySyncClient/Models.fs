@@ -8,16 +8,16 @@ type EndPoint = {
     Password: string
 }
 
-type SyncFolders = {
-    Folders : string list
-}
-
 type SyncFolder = {
     LocalPath : string
     RemotePath : string
 }
 
+type Config = {
+    EndPoint : EndPoint
+    Folders: SyncFolder list
+}
+
 type ConfigFile = 
-    | EndPoint
-    | Folders
-    | Config of String
+    | Global
+    | Local of string
