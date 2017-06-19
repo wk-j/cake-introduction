@@ -1,10 +1,12 @@
-module EasySyncClient.FileMonitor
+module EasySyncClient.FileWatcher
 
 open System.IO
 open System.Linq
 open System.Collections.Generic
 open System.Timers
 open System
+open EasySyncClient.Utility
+open System.Threading
 
 type FileStatus = 
     | Deleted
@@ -25,8 +27,8 @@ type WatchSettings = {
 
 type ChangeWatcher()  =
 
-    let mutable runningHandler = false
-    let timer = new Timer(50.)
+    let mutable processing = false
+    let timer = new System.Timers.Timer(50.)
     let unNotifiedChanages = List<FileChange>()
     let mutable watcher = new FileSystemWatcher()
 
@@ -37,9 +39,10 @@ type ChangeWatcher()  =
             timer.Dispose()
 
     member private this.AcumChanges fileChange = 
-        if not runningHandler then
-            unNotifiedChanages.Add fileChange
+        // log "change => %s => %A" fileChange.FullPath fileChange.FileStatus
+        if not processing then
             timer.Start()
+            unNotifiedChanages.Add fileChange
 
     member private this.HandleWatcherEvent (onChange: FileChange -> unit ) status (e: FileSystemEventArgs) =
         { FullPath = e.FullPath
@@ -52,7 +55,11 @@ type ChangeWatcher()  =
           Name = e.Name
           FileStatus =  status } |> onChange
 
-    member private this.Start settings (onChange : FileChange -> unit)= 
+    member private this.Start settings = 
+
+        log "path = %s" settings.Path
+        log "pattern = %s" settings.Pattern
+
         let full = DirectoryInfo(settings.Path).FullName
         watcher <- new FileSystemWatcher(full, settings.Pattern)
         watcher.EnableRaisingEvents <- true
@@ -67,23 +74,26 @@ type ChangeWatcher()  =
         watcher.Renamed.Add(rename)
 
     member this.Watch settings (onChange: FileChange -> unit) =
+
+        log "watch %s" settings.Path
+
         let full { FullPath = full } = full
         let status { FileStatus = status } = status
         let first (full,changes) = changes |> Seq.sortBy status |> Seq.head
 
         timer.AutoReset <- false
-
         timer.Elapsed.Add(
             fun  e ->
+                processing <- true
                 if unNotifiedChanages.Any() then
-                    let changes = unNotifiedChanages |> Seq.groupBy full |> Seq.map (first)
-                    unNotifiedChanages.Clear()
-
+                    let changes = unNotifiedChanages |> Seq.groupBy full |> Seq.map (first) |> Seq.toList
                     try
-                        runningHandler <- true
-                        changes |> Seq.iter onChange
+                        log "process => %d" <| changes.Count()  
+                        changes |> List.iter onChange
                     with ex ->
-                        runningHandler <- true
+                        log "error => %s" ex.Message
+                    unNotifiedChanages.Clear()
+                processing <- false
         )
 
         this.Start settings

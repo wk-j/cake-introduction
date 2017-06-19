@@ -45,7 +45,9 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
+
     <Compile Include="Models.fs" />
+    <Compile Include="Utility.fs" />
     <Compile Include="ChangeWatcher.fs" />
     <Compile Include="SettingsManager.fs" />
     <Compile Include="Client.fs" />
