@@ -27,8 +27,11 @@ let replace (a:string) b (c: string)= c.Replace(a, b)
 
 type RalativeRemotePath = RelativeRemotePath of string
 type RelativeLocalPath = RelativeLocalPath of string
+type RelativeRemoteNoName = RelativeRemoteNoName of string
 
 type FullRemotePath = FullRemotePath of string
+type FullRemotePathNoName = FullRemotePathNoName of string
+
 type FullLocalPath = FullLocalPath of string
 
 type RemoteSection = RemoteSection of string array
@@ -39,19 +42,17 @@ let createRelativePath (LocalRoot localRoot) (FullLocalPath localPath) =
     let relative = replace localRoot "" localPath 
     let path = Path.GetDirectoryName relative
     let name = Path.GetFileName relative 
-
-    printfn "%s" relative
-    printfn "%s" name
-    printfn "%s"  path
-
     relative |> RelativeRemotePath
 
-let createSection (RelativeRemotePath path) =
+let createSection (RelativeRemoteNoName path) =
     let path = path |> cleanPath
     splitWith "/" path |> toSections |> List.map RelativeRemotePath
 
 let createFullRemotePath (RemoteRoot root) (RelativeRemotePath path)  = 
-    root + "/" + path |> cleanPath
+    root + "/" + path |> cleanPath  |> FullRemotePath
+
+let createFullRemotePathNoName (RemoteRoot root) (RelativeRemoteNoName path) = 
+    root + "/" + path |> cleanPath  |> FullRemotePathNoName
 
 let extractName (FullRemotePath path) = 
     let last = path |> splitWith "/" |> Array.last
@@ -75,7 +76,7 @@ type AlfrescoClient(endPoint) =
         | _ -> false
 
     member this.TryCreateDirectory remoteRoot remotePath = 
-        let full = createFullRemotePath remoteRoot remotePath 
+        let full = createFullRemotePath remoteRoot remotePath |> fun (FullRemotePath path) -> path
 
         async {
             do! Task.Delay(1000) |> Async.AwaitTask
@@ -95,7 +96,8 @@ type AlfrescoClient(endPoint) =
 
     member this.TryCreateDirectories remoteRoot remotePath  =
         async {
-            let full = createFullRemotePath remoteRoot remotePath
+            let full = createFullRemotePathNoName remoteRoot remotePath |> fun (FullRemotePathNoName path) -> path
+            printfn "try to create directory %s" full
             try 
                 let! item = client.GetFolder full |> Async.AwaitTask
                 logger.Info("{0} is exists", full)
@@ -113,11 +115,16 @@ type AlfrescoClient(endPoint) =
                 let path = createRelativePath (LocalRoot localRoot) (FullLocalPath localPath)
                 let remote = RemoteRoot remoteRoot
 
-                this.TryCreateDirectories (RemoteRoot remoteRoot) path |> ignore
-                let targetPath = createFullRemotePath remote path
-                let name = Path.GetFileName localPath
+                let getPath (RelativeRemotePath path) = Path.GetDirectoryName path |> RelativeRemoteNoName 
 
-                let! item =  client.Upload(targetPath, File.OpenRead(localPath), name) |> Async.AwaitTask
+                this.TryCreateDirectories (RemoteRoot remoteRoot) (getPath path) |> ignore
+                let targetPath = createFullRemotePath remote path
+
+                let path, name = extractName targetPath
+                
+                printfn "try to upload file %s => %s" path name
+
+                let! item =  client.Upload(path, File.OpenRead(localPath), name) |> Async.AwaitTask
                 return item
             }
             |> Async.RunSynchronously
@@ -128,7 +135,8 @@ type AlfrescoClient(endPoint) =
 
 type FolderManager(endPoint, config) as this =
 
-    let timer = new System.Timers.Timer(5000.0)    
+    let timer = new System.Timers.Timer(10000.0)    
+    let client = AlfrescoClient(endPoint)
 
     do 
         timer.AutoReset <- false
@@ -141,30 +149,39 @@ type FolderManager(endPoint, config) as this =
         ()
 
     member private this.Process(args) =
+        printfn "process ..."
+
         let local = config.LocalPath
         let pause = timer.Stop
         let resume = timer.Start
+        let touch() = SettingsManager.touch config
+
+        let startUpload (fileInfo: FileInfo) = 
+            printfn "start upload %s" fileInfo.FullName
+            let localRoot = LocalRoot config.LocalPath
+            let remoteRoot = RemoteRoot config.RemotePath
+            let full = FullLocalPath fileInfo.FullName
+            client.UploadFile remoteRoot localRoot full
 
         let findModifyFiles() = 
+            printfn "file modified files %s" config.LocalPath
             let last = SettingsManager.getTouchDate (config)
-            Directory.EnumerateFiles(local, "*.txt")
+            Directory.EnumerateFiles(local, "*.txt", SearchOption.AllDirectories)
                 |> Seq.map FileInfo
                 |> Seq.filter(fun x -> x.LastWriteTime >= last)
         pause()
 
         let files = findModifyFiles() 
-        //touch()
+        let results = files |> Seq.map startUpload |> Seq.toList
+
+        touch()
         resume()
 
-    member this.Start() =
-        timer.Start()
-
-    member this.Stop() =
-        timer.Stop()
+    member this.Start = timer.Start
+    member this.Stop = timer.Stop
 
     interface IDisposable with
-        member this.Dispose() =
-            timer.Dispose()
+        member this.Dispose() = timer.Dispose()
 
 type SyncManger() = 
 

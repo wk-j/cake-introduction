@@ -10,7 +10,7 @@ let private dir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfil
 
 let private configPath = function
     | Global -> Path.Combine(dir, ".easy-sync-global")
-    | Local path -> Path.Combine(dir, ".easy-sync-folders")
+    | Local path -> Path.Combine(path, ".easy-sync-local")
 
 let localConfig() =
     let file = configPath Global
@@ -32,8 +32,15 @@ let writeConfig config =
 
 let touch { SyncFolder.LocalPath = local } = 
     let path = configPath (Local local)
-    File.SetLastWriteTime(path, DateTime.Now)
+    if File.Exists path then
+        printfn "touch file %s" path
+        File.SetLastWriteTime(path, DateTime.Now)
+    else
+        File.WriteAllText(path, "")
 
 let getTouchDate { SyncFolder.LocalPath = local } = 
     let path = configPath (Local local)
-    File.GetLastWriteTime (path)
+    if File.Exists path then
+        File.GetLastWriteTime (path)
+    else 
+        System.DateTime.MinValue

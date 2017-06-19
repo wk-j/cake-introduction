@@ -13,7 +13,7 @@ let endPoint = {
 
 let folder = { 
     RemotePath = "/alfresco/webdav/Validate"
-    LocalPath = ""
+    LocalPath = "/Users/wk/Source/project/easy-sync/EasySyncClient/Resource"
 }
 
 let mgr = new FolderManager(endPoint, folder)

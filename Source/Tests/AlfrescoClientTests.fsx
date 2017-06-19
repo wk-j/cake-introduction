@@ -1,4 +1,3 @@
-
 #r "../../packages/NLog/lib/net45/NLog.dll"
 #r "../../Source/EasySyncClient/bin/Debug/EasySyncClient.dll"
 
@@ -10,7 +9,7 @@ let baseDir = "/alfresco/webdav/Validate"
 let root = RemoteRoot baseDir
 
 let createDir() =
-    let relative = RelativeRemotePath "SecA/SecB/SecC"
+    let relative = RelativeRemoteNoName "SecA/SecB/SecC"
     client.TryCreateDirectories root  relative |> printfn "%A"
 
 let uploadFile() =

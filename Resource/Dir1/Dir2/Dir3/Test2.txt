@@ -1,0 +1,21 @@
+Java
+
+C#
+C++
+Python
+F#
+
+logo
+First Pull Request
+What was the first pull request you sent on GitHub?
+Login with Github
+zkan
+Launch MVP #1
+to prontodev/who-broke-build-slack
+
+
+zkan sent this pull request 2 years ago
+Merged
+
+
+See every pull request by zkan
