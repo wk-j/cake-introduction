@@ -30,7 +30,7 @@ fi
 SCRIPT="build.cake"
 TARGET="Default"
 CONFIGURATION="Release"
-VERBOSITY="verbose"
+VERBOSITY="Normal"
 DRYRUN=
 SHOW_VERSION=false
 SCRIPT_ARGUMENTS=()
