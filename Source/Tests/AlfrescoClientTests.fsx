@@ -9,7 +9,7 @@ let baseDir = "/alfresco/webdav/Validate"
 let root = RemoteRoot baseDir
 
 let createDir() =
-    let relative = RelativeRemoteNoName "SecA/SecB/SecC"
+    let relative = RemoteRelativeNoName "SecA/SecB/SecC"
     client.TryCreateDirectories root  relative |> printfn "%A"
 
 let uploadFile() =
@@ -21,5 +21,15 @@ let uploadFile() =
 
     client.UploadFile root localRoot fullPath
 
-uploadFile() |> printfn "%A"
-//createDir()
+let renameFile() =
+    let info = 
+        { MoveInfo.OldPath = "Resource/Dir1/Dir2/Dir3/Test1.txt"
+          NewPath = "Resource/Dir1/Dir2/Dir3/Test1-New.txt" }
+
+    let localPath = "Resource"
+    let localRoot = LocalRoot localPath
+
+    client.MoveFile root localRoot info
+
+//uploadFile() |> printfn "%A"
+//renameFile() |> printfn "%A"

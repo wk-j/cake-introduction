@@ -12,7 +12,7 @@ type FileStatus =
     | Deleted
     | Created
     | Changed
-    | Rename of string * string
+    | Renamed of string * string
 
 type FileChange = {
     FullPath : string
@@ -50,7 +50,7 @@ type ChangeWatcher()  =
           FileStatus = status } |> onChange
 
     member private this.HandleRenameEvent (onChange: FileChange -> unit )  (e: RenamedEventArgs) =
-        let status = Rename (e.OldName,e.Name)
+        let status = Renamed (e.OldName,e.Name)
         { FullPath = e.FullPath
           Name = e.Name
           FileStatus =  status } |> onChange
