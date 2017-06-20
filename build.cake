@@ -13,6 +13,11 @@ Task("Build-Solution").Does(() => {
     DotNetCoreBuild(solution);
 });
 
+Task("Run-Project").Does(() => {
+    DotNetCoreRun(mainProject);
+});
+
+
 Task("Clean-Solution").Does(() => {
     Func<string, IEnumerable<string>> getDirs = (dirName) =>
         System.IO.Directory.EnumerateDirectories("Source", dirName, System.IO.SearchOption.AllDirectories);
@@ -20,22 +25,10 @@ Task("Clean-Solution").Does(() => {
     CleanDirectories(getDirs("obj"));
 });
 
-Task("Create-NuGet-Package").Does(() => {
-   DotNetCorePack(libraryProject, new DotNetCorePackSettings {
-       Configuration = "Release",
-       OutputDirectory = "Dist/NuGet"
-   });
-});
 
 Task("Clean-Dist").Does(() => {
     CleanDirectories("Dist/Release");
     CleanDirectories("Dist/Zip");
-});
-
-
-
-Task("Run-Project").Does(() => {
-    DotNetCoreRun(mainProject);
 });
 
 Task("Run-Test").Does(() => {
@@ -56,6 +49,13 @@ Task("Watch-Test").Does(() => {
         Arguments = "watch test",
         WorkingDirectory = dir
     });
+});
+
+Task("Create-NuGet-Package").Does(() => {
+   DotNetCorePack(libraryProject, new DotNetCorePackSettings {
+       Configuration = "Release",
+       OutputDirectory = "Dist/NuGet"
+   });
 });
 
 Task("Publish-NuGet")
@@ -119,9 +119,9 @@ Task("Create-Github-Release")
         GitReleaseManagerPublish(user, token, owner , repo, tag);
 });
 
-Task("Hello").Does(() => {
+Task("Default").Does(() => {
     Information("Hello, world!");
 });
 
-var target = Argument("target", "default");
+var target = Argument("target", "Default");
 RunTarget(target);

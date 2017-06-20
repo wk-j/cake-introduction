@@ -25,11 +25,11 @@ curl -Lsfo build.sh http://cakebuild.net/download/bootstrapper/osx
 #### Create build.cake
 
 ```csharp
-Task("Hello").Does(() => {
+Task("Default").Does(() => {
     Information("Hello, world!");
 });
 
-var target = Argument("target", "Hello");
+var target = Argument("target", "Default");
 RunTarget(target);
 ```
 
