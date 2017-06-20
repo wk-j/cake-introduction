@@ -108,13 +108,22 @@ type AlfrescoClient(endPoint) =
                 return true
         } |> Async.RunSynchronously
 
-    member this.MoveFile (RemoteRoot remoteRoot) (LocalRoot localRoot) info = 
+    member this.DeleteFile remoteRoot localRoot fullLocalPath  = 
+        async {
+            let fullRemotePath (FullRemotePath remote) = remote
+            let remotePath = createRelativeRemotePath localRoot fullLocalPath
+            let targetPath = createFullRemotePath remoteRoot remotePath
+            let str = fullRemotePath targetPath
+            client.DeleteFile(str) |> Async.AwaitTask |> ignore
+            return true
+        } |> Async.RunSynchronously
+
+    member this.MoveFile remoteRoot localRoot info = 
         async {
             let fullRemotePath (FullRemotePath remote )  = remote
             let extractPath localPath = 
-                let path = createRelativeRemotePath (LocalRoot localRoot) (FullLocalPath localPath) 
-                let remote = RemoteRoot remoteRoot
-                let targetPath = createFullRemotePath remote path
+                let path = createRelativeRemotePath localRoot (FullLocalPath localPath) 
+                let targetPath = createFullRemotePath remoteRoot path
                 fullRemotePath targetPath
 
             let newFileName = Path.GetFileName(info.NewPath)
@@ -127,55 +136,53 @@ type AlfrescoClient(endPoint) =
             return rs
         } |> Async.RunSynchronously
 
-    member this.UploadFile (RemoteRoot remoteRoot) (LocalRoot localRoot) (FullLocalPath localPath) = 
-        if localPath.Contains localRoot then
-            async {
-                let path = createRelativeRemotePath (LocalRoot localRoot) (FullLocalPath localPath)
-                let remote = RemoteRoot remoteRoot
+    member this.UploadFile remoteRoot localRoot localPath = 
+        let  getLocalPath (FullLocalPath path) = path
+        async {
+            let path = createRelativeRemotePath localRoot localPath
+            let getPath (RemoteRelativePath path) = Path.GetDirectoryName path |> RemoteRelativeNoName 
 
-                let getPath (RemoteRelativePath path) = Path.GetDirectoryName path |> RemoteRelativeNoName 
+            this.TryCreateDirectories remoteRoot (getPath path) |> ignore
+            let targetPath = createFullRemotePath remoteRoot path
+            let path, name = extractFullRemotePath targetPath
+            
+            printfn "try to upload file %s => %s" path name
 
-                this.TryCreateDirectories (RemoteRoot remoteRoot) (getPath path) |> ignore
-                let targetPath = createFullRemotePath remote path
-
-                let path, name = extractFullRemotePath targetPath
-                
-                printfn "try to upload file %s => %s" path name
-
-                let! item =  client.Upload(path, File.OpenRead(localPath), name) |> Async.AwaitTask
-                return item
-            }
-            |> Async.RunSynchronously
-            |> ignore
-            true
-        else
-            false
+            let! item =  client.Upload(path, File.OpenRead(getLocalPath localPath), name) |> Async.AwaitTask
+            return item
+        } |> Async.RunSynchronously
 
 type ChangeManager(endPoint, config) as this = 
 
     let changeMonitor = new ChangeWatcher()
     let settings = { Path = config.LocalPath; Pattern = "*.*" }
     let client = AlfrescoClient endPoint
+    let mutable running = false
 
-    do 
-        changeMonitor.Watch settings this.ProcessChange
+    member this.StartWatch() =
+        if not running then
+            changeMonitor.Watch settings this.ProcessChange
+            running <- true
 
-    member this.ProcessChange(change) = 
+    member private this.ProcessChange(change) = 
         let fullPath = change.FullPath
         let fullLocalPath = FullLocalPath fullPath
         let localRoot = LocalRoot config.LocalPath
         let remoteRoot = RemoteRoot config.RemotePath
-        match change.FileStatus with
-        | Created -> 
-            client.UploadFile remoteRoot localRoot fullLocalPath |> ignore
-        | Deleted -> ()
-        | Renamed (old, n) -> 
-            let info = 
-              { OldPath = old
-                NewPath = n }
-            client.MoveFile remoteRoot localRoot info  |> ignore
-        | Changed -> 
-            client.UploadFile remoteRoot localRoot fullLocalPath |> ignore
+        let result = 
+            match change.FileStatus with
+            | Created -> 
+                client.UploadFile remoteRoot localRoot fullLocalPath
+            | Deleted -> 
+                client.DeleteFile remoteRoot localRoot fullLocalPath
+            | Renamed (old, n) -> 
+                let info = 
+                  { OldPath = old
+                    NewPath = n }
+                client.MoveFile remoteRoot localRoot info 
+            | Changed -> 
+                client.UploadFile remoteRoot localRoot fullLocalPath
+        result |> ignore
 
 type FolderManager(endPoint, config) as this =
 
