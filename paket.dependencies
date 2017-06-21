@@ -4,3 +4,4 @@ nuget FSharp.Core
 nuget WebDAVClient
 nuget Newtonsoft.Json
 nuget NLog
+nuget LiteDB

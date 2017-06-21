@@ -24,6 +24,7 @@ NUGET
       System.Threading.Thread (>= 4.0) - framework: >= net463, >= netstandard16
       System.Threading.ThreadPool (>= 4.0.10) - framework: >= net463, >= netstandard16
       System.Threading.Timer (>= 4.0.1) - framework: >= net463, >= netstandard16
+    LiteDB (3.1.1)
     Microsoft.Bcl (1.1.10) - framework: >= net45, monoandroid, monotouch, xamarinios
       Microsoft.Bcl.Build (>= 1.0.14)
     Microsoft.Bcl.Build (1.0.21) - import_targets: false, framework: >= net45, monoandroid, monotouch, xamarinios
