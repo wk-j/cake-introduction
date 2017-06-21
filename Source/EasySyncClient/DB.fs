@@ -18,11 +18,13 @@ type Status =
 [<CLIMutable>]
 type QFile = {
     Id : int
-    Action: FileAction
+    FileAction: FileAction
     Status: Status
     OriginalPath : string
-    OriginalName : string
-    DateTime: DateTime
+    NewPath : string
+    CreationTime: DateTime
+    LastWriteTime: DateTime
+    LastAccessTime: DateTime
 }
 
 module DbManager = 
@@ -38,5 +40,5 @@ module DbManager =
             fileCollection.Insert(file) |> ignore
             file
 
-    let queryFile status  =
-        fileCollection.Find(fun x -> x.Status = status)
+    let queryFile status date  =
+        fileCollection.Find(fun x -> x.Status = status && x.LastWriteTime >= date)

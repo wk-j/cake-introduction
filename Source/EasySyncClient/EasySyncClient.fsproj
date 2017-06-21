@@ -52,6 +52,7 @@
     <Compile Include="DB.fs" />
     <Compile Include="ChangeWatcher.fs" />
     <Compile Include="SettingsManager.fs" />
+    <Compile Include="UploadManager.fs" />
     <Compile Include="Managers.fs" />
   </ItemGroup>
   <PropertyGroup>
