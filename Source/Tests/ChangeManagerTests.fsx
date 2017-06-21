@@ -1,6 +1,6 @@
 #r "../../Source/EasySyncClient/bin/Debug/EasySyncClient.dll"
 
-open EasySyncClient.Client
+open EasySyncClient.Managers
 open EasySyncClient.Models
 open System
 
@@ -15,7 +15,9 @@ let folder = {
     LocalPath = "/Users/wk/Source/project/easy-sync/EasySyncClient/Resource"
 }
 
-let manager = ChangeManager(endPoint, folder)
-manager.StartWatch()
+let start() =
 
-Console.ReadLine()
+    let manager = ChangeManager(endPoint, folder)
+    manager.StartWatch()
+
+    Console.ReadLine()

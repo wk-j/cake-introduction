@@ -49,6 +49,7 @@ let getFolder() =
     } |> Async.RunSynchronously
 
 
-getFolder() |> printfn "%A"
+let start() =
+    getFolder() |> printfn "%A"
 
 // uploadFile() |> printfn "%A"

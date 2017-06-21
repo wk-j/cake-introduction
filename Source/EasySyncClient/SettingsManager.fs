@@ -12,7 +12,7 @@ let private configPath = function
     | Global -> Path.Combine(dir, ".easy-sync-global")
     | Local path -> Path.Combine(path, ".easy-sync-local")
 
-let localConfig() =
+let globalConfig() =
     let file = configPath Global
 
     if File.Exists file then

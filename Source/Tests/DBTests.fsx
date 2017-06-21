@@ -4,7 +4,6 @@
 open EasySyncClient.DB
 open System
 
-
 let file = 
     { QFile.Id = 0 
       Action = FileAction.Changed
@@ -13,12 +12,17 @@ let file =
       OriginalName = "Test1.txt"
       DateTime = DateTime.Now }
 
-let insert() =
-    insertFile file
-
 let query() =
-    queryFile Status.Initialize |> printfn "%A"
+    DbManager.queryFile Status.Initialize |> printfn "%A"
 
-//insert()
-//query()
-
+let update() =
+    let q = DbManager.queryFile Status.Initialize |> Seq.toList
+    if q.Length > 0 then
+        let q = q.Head
+        let n = { q with Status = Status.ProcessSuccess }
+        DbManager.updateFile n |> ignore
+    
+let start() =
+    //insert()
+    update()
+    query()

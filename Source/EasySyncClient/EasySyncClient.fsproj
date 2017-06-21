@@ -46,11 +46,13 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Models.fs" />
+    <Compile Include="ClientModels.fs" />
     <Compile Include="Utility.fs" />
+    <Compile Include="AlfrescoClient.fs" />
     <Compile Include="DB.fs" />
     <Compile Include="ChangeWatcher.fs" />
     <Compile Include="SettingsManager.fs" />
-    <Compile Include="Client.fs" />
+    <Compile Include="Managers.fs" />
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">14</MinimumVisualStudioVersion>

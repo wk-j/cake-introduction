@@ -9,7 +9,8 @@ let settings = {
     Pattern = "*.txt"
 }
 
-let watcher = new ChangeWatcher()
-watcher.Watch settings (fun x -> log "==== %A %A" x.FullPath x.FileStatus)
+let start() =
+    let watcher = new ChangeWatcher()
+    watcher.Watch settings (fun x -> log "==== %A %A" x.FullPath x.FileStatus)
 
-Console.ReadLine()
+    Console.ReadLine()

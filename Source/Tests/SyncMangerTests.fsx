@@ -1,10 +1,11 @@
 
 #r "../../Source/EasySyncClient/bin/Debug/EasySyncClient.dll"
 
-open EasySyncClient.Client
+open EasySyncClient.Managers
 open System
 
-let manager = SyncManger()
-manager.StartSync()
+let start() =
+    let manager = SyncManger()
+    manager.StartSync()
 
-Console.ReadLine()
+    Console.ReadLine()

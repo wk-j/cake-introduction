@@ -25,14 +25,18 @@ type QFile = {
     DateTime: DateTime
 }
 
-let private db = new LiteDatabase("Data/Files.db")
-let private fileCollection = db.GetCollection<QFile>("QFiles")
+module DbManager = 
 
-let insertFile (file:QFile) = 
-    fileCollection.Insert(file)
+    let private db = new LiteDatabase("Data/Files.db")
+    let private fileCollection = db.GetCollection<QFile>("QFiles")
 
-let updateFile (file: QFile) = 
-    fileCollection.Update(file)
+    let updateFile(file:QFile) = 
+        if file.Id > 0 then
+            fileCollection.Update(file) |> ignore
+            file
+        else
+            fileCollection.Insert(file) |> ignore
+            file
 
-let queryFile status  =
-    fileCollection.Find(fun x -> x.Status = status)
+    let queryFile status  =
+        fileCollection.Find(fun x -> x.Status = status)

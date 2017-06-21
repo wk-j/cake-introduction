@@ -1,7 +1,8 @@
 #r "../../packages/NLog/lib/net45/NLog.dll"
 #r "../../Source/EasySyncClient/bin/Debug/EasySyncClient.dll"
 
-open EasySyncClient.Client
+open EasySyncClient.AlfrescoClient
+open EasySyncClient.ClientModels
 
 let client = AlfrescoClient( { User = "admin"; Password = "admin"; Url = "http://192.168.0.109:8080"})
 

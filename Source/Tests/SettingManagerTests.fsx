@@ -1,10 +1,9 @@
 #r "../../Source/EasySyncClient/bin/Debug/EasySyncClient.dll"
 
-open EasySyncClient.Client
+open EasySyncClient.SettingsManager
 open EasySyncClient
 
-let endPoint = SettingsManager.loadEndPoint()
-let folders = SettingsManager.loadFolders()
+
+let endPoint = SettingsManager.localConfig()
 
 printfn "EndPoint = %A" endPoint
-printfn "Folders = %A" folders
