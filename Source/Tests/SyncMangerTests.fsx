@@ -7,5 +7,7 @@ open System
 let start() =
     let manager = SyncManger()
     manager.StartSync()
-
     Console.ReadLine()
+
+start()
+

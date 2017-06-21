@@ -16,7 +16,6 @@ type FileStatus =
 
 type FileChange = {
     FullPath : string
-    Name: string
     FileStatus : FileStatus
 }
 
@@ -46,13 +45,11 @@ type ChangeWatcher()  =
 
     member private this.HandleWatcherEvent (onChange: FileChange -> unit ) status (e: FileSystemEventArgs) =
         { FullPath = e.FullPath
-          Name = e.Name
           FileStatus = status } |> onChange
 
     member private this.HandleRenameEvent (onChange: FileChange -> unit )  (e: RenamedEventArgs) =
-        let status = Renamed (e.OldName,e.Name)
+        let status = Renamed (e.OldFullPath,e.FullPath)
         { FullPath = e.FullPath
-          Name = e.Name
           FileStatus =  status } |> onChange
 
     member private this.Start settings = 

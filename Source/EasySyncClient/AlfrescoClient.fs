@@ -7,9 +7,9 @@ open EasySyncClient.Models
 open System.Net
 open System.IO
 open System.Threading.Tasks
+open EasySyncClient.Utility
 
 type AlfrescoClient(endPoint) = 
-    let logger = LogManager.GetCurrentClassLogger()
 
     let client = Client(NetworkCredential(UserName = endPoint.User, Password = endPoint.Password))
     do 
@@ -26,13 +26,13 @@ type AlfrescoClient(endPoint) =
         async {
             do! Task.Delay(1000) |> Async.AwaitTask
             try 
-                logger.Info("Try to create directory | {0}", full)
+                log "try to create directory %s" full
                 let! items = client.GetFolder full |> Async.AwaitTask
                 return true
             with ex ->
                 try 
                     let path, last = extractFullRemotePath (FullRemotePath full)
-                    logger.Info("Create {0} => {1}", path, last)
+                    log "create %s => %s" path last
                     client.CreateDir(path, last) |> Async.AwaitTask |> ignore
                     return true
                 with ex ->
@@ -42,10 +42,9 @@ type AlfrescoClient(endPoint) =
     member this.TryCreateDirectories remoteRoot remotePath  =
         async {
             let full = createFullRemotePathNoName remoteRoot remotePath |> fun (FullRemotePathNoName path) -> path
-            printfn "try to create directory %s" full
+            log "try to create directory %s" full
             try 
                 let! item = client.GetFolder full |> Async.AwaitTask
-                logger.Info("{0} is exists", full)
                 return true
             with ex ->
                 let sections = createRemoteSection remotePath 
@@ -76,24 +75,25 @@ type AlfrescoClient(endPoint) =
             let originalPath = extractPath info.OldPath
             let newPath = extractPath info.NewPath 
 
-            printfn "move %s to %s" originalPath newPath
+            log "move %s to %s" originalPath newPath
 
             let! rs = client.MoveFile(originalPath, newPath) |> Async.AwaitTask
             return rs
         } |> Async.RunSynchronously
 
     member this.UploadFile remoteRoot localRoot localPath = 
-        let  getLocalPath (FullLocalPath path) = path
-        async {
-            let path = createRelativeRemotePath localRoot localPath
-            let getPath (RemoteRelativePath path) = Path.GetDirectoryName path |> RemoteRelativeNoName 
+        let getLocalPath (FullLocalPath path) = path
+        let relativePath = createRelativeRemotePath localRoot localPath
+        let getPath (RemoteRelativePath path) = Path.GetDirectoryName path |> RemoteRelativeNoName 
 
-            this.TryCreateDirectories remoteRoot (getPath path) |> ignore
-            let targetPath = createFullRemotePath remoteRoot path
+        async {
+            log "relative path %A" relativePath
+
+            this.TryCreateDirectories remoteRoot (getPath relativePath) |> ignore
+            let targetPath = createFullRemotePath remoteRoot relativePath
             let path, name = extractFullRemotePath targetPath
             
-            printfn "try to upload file %s => %s" path name
-
+            log "try to upload file %s => %s" path name
             let! item =  client.Upload(path, File.OpenRead(getLocalPath localPath), name) |> Async.AwaitTask
             return item
         } |> Async.RunSynchronously

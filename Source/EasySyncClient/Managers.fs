@@ -10,10 +10,13 @@ open System.Linq
 open System.Net
 open System.Threading.Tasks
 open EasySyncClient.FileWatcher
+open EasySyncClient.UploadManager
+open EasySyncClient.ClientModels
 open EasySyncClient.DB
+open EasySyncClient.Utility
 open NLog
 
-let private createFile file newPath action =
+let private createFile (RemoteRoot remoteRoot) (LocalRoot localRoot) file newPath action =
     let info = FileInfo(file)
     let model = 
         { QFile.Status = Status.Initialize
@@ -21,6 +24,8 @@ let private createFile file newPath action =
           LastWriteTime = info.LastWriteTime
           LastAccessTime = info.LastAccessTime
           OriginalPath = info.FullName
+          RemoteRoot = remoteRoot
+          LocalRoot = localRoot
           NewPath = newPath
           Id = 0
           FileAction = action }
@@ -29,7 +34,7 @@ let private createFile file newPath action =
 type ChangeManager(config) = 
 
     let changeMonitor = new ChangeWatcher()
-    let settings = { Path = config.LocalPath; Pattern = "*.*" }
+    let settings = { Path = config.LocalPath; Pattern = "*.txt" }
     let mutable running = false
 
     member this.StartWatch() =
@@ -39,17 +44,21 @@ type ChangeManager(config) =
 
     member private this.ProcessChange(change) = 
         let fullPath = change.FullPath
+        let remoteRoot = RemoteRoot config.RemotePath
+        let localRoot = LocalRoot config.LocalPath
+
+        let createAction = createFile remoteRoot localRoot fullPath
 
         let result = 
             match change.FileStatus with
             | Created -> 
-                createFile (fullPath) "" FileAction.Created
+                createAction "" FileAction.Created
             | Deleted -> 
-                createFile (fullPath) "" FileAction.Deleted
+                createAction "" FileAction.Deleted
             | Renamed (old, n) -> 
-                createFile (fullPath) n FileAction.Renamed
+                createAction  n FileAction.Renamed
             | Changed -> 
-                createFile (fullPath) "" FileAction.Changed
+                createAction "" FileAction.Changed
         result |> ignore
 
 type FolderManager(config) as this =
@@ -61,15 +70,17 @@ type FolderManager(config) as this =
         timer.Elapsed.Add(this.Process)
 
     member this.ManualSync() =
-        let local = config.LocalPath
+        let localPath = config.LocalPath
+        let local = LocalRoot localPath 
+        let remote = RemoteRoot config.RemotePath
         let startUpload (fileInfo: FileInfo) = 
-            printfn "start upload %s" fileInfo.FullName
-            createFile (fileInfo.FullName) "" FileAction.Changed
+            log "start upload %s" fileInfo.FullName
+            createFile remote local (fileInfo.FullName) "" FileAction.Changed
 
         let findModifyFiles() = 
-            printfn "file modified files %s" config.LocalPath
+            log "file modified files %s" config.LocalPath
             let last = SettingsManager.getTouchDate (config)
-            Directory.EnumerateFiles(local, "*.txt", SearchOption.AllDirectories)
+            Directory.EnumerateFiles(localPath, "*.txt", SearchOption.AllDirectories)
                 |> Seq.map FileInfo
                 |> Seq.filter(fun x -> x.LastWriteTime >= last)
 
@@ -78,13 +89,12 @@ type FolderManager(config) as this =
         (results)
 
     member private this.Process(args) =
-        printfn "process ..."
         let pause = timer.Stop
         let resume = timer.Start
         let touch() = SettingsManager.touch config
         let sync = this.ManualSync
 
-        let ps = pause >> sync >> ignore >> touch >> resume 
+        let ps = pause >> sync >> ignore >> touch // >> resume 
         ps()
 
     member this.StartTimer = timer.Start
@@ -104,7 +114,12 @@ type SyncManger() =
         let folders = config.Folders
 
         let folderManagers = 
-            folders 
-            |> List.map (fun x -> this.CreateFolderManager(endPoint, x))
+            folders |> List.map (fun x -> this.CreateFolderManager(endPoint, x))
 
         folderManagers |> List.iter (fun x -> x.StartTimer())
+
+        let change = ChangeManager(config.Folders.[0])
+        change.StartWatch()
+
+        UploadManager.start config.EndPoint
+

@@ -2,6 +2,7 @@ module EasySyncClient.DB
 
 open System
 open LiteDB
+open EasySyncClient.Utility
 
 type FileAction = 
     | Created = 0
@@ -24,6 +25,8 @@ type QFile = {
     NewPath : string
     CreationTime: DateTime
     LastWriteTime: DateTime
+    RemoteRoot: string
+    LocalRoot: string
     LastAccessTime: DateTime
 }
 
@@ -41,4 +44,4 @@ module DbManager =
             file
 
     let queryFile status date  =
-        fileCollection.Find(fun x -> x.Status = status && x.LastWriteTime >= date)
+        fileCollection.Find(fun x -> x.Status = status)

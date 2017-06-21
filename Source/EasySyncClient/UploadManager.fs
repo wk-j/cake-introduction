@@ -10,14 +10,14 @@ open System.Timers
 
 module UploadManager = 
 
-    let private processFile (client: AlfrescoClient) (folder)  file = 
+    let private processFile (client: AlfrescoClient) file = 
         log "process file %s" file.OriginalPath
 
         let action : FileAction = file.FileAction
         let localPath = file.OriginalPath
         let fullLocalPath = FullLocalPath localPath
-        let remoteRoot = RemoteRoot folder.RemotePath
-        let localRoot = LocalRoot folder.LocalPath
+        let remoteRoot = RemoteRoot file.RemoteRoot 
+        let localRoot = LocalRoot file.LocalRoot 
 
         let success =
             match action with
@@ -34,20 +34,21 @@ module UploadManager =
             | _ -> false
 
         if success then
+            log "sync success %s" file.OriginalPath
             let newFile = { file with Status = Status.ProcessSuccess }
             DbManager.updateFile newFile
         else
+            log ">> sync failed %s" file.OriginalPath
             let newFile = { file with Status = Status.ProcessFailed }
             DbManager.updateFile newFile
 
-    let start settings (folder: SyncFolder) =
+    let start settings =
         let alfresco = AlfrescoClient(settings)
-        let action = processFile alfresco folder
+        let action = processFile alfresco
 
         let timer = new Timer(3000.0)
 
         let handler x = 
-            log "query files ..."
             let file = DbManager.queryFile Status.Initialize DateTime.MinValue
             let rs = file |> Seq.toList |> List.map action
             timer.Start()

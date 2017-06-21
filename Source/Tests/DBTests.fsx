@@ -6,17 +6,22 @@ open System
 
 let file = 
     { QFile.Id = 0 
-      Action = FileAction.Changed
+      FileAction = FileAction.Changed
       Status = Status.Initialize
       OriginalPath = "Resource/Test1.txt"
-      OriginalName = "Test1.txt"
-      DateTime = DateTime.Now }
+      CreationTime = DateTime.Now
+      LastWriteTime = DateTime.Now
+      NewPath = ""
+      RemoteRoot = ""
+      LocalRoot = ""
+      LastAccessTime = DateTime.Now }
 
 let query() =
-    DbManager.queryFile Status.Initialize |> printfn "%A"
+    let data = DbManager.queryFile Status.Initialize DateTime.MinValue |> Seq.toList
+    data |> printfn "%A"
 
 let update() =
-    let q = DbManager.queryFile Status.Initialize |> Seq.toList
+    let q = DbManager.queryFile Status.Initialize  DateTime.MinValue |> Seq.toList
     if q.Length > 0 then
         let q = q.Head
         let n = { q with Status = Status.ProcessSuccess }
@@ -24,5 +29,7 @@ let update() =
     
 let start() =
     //insert()
-    update()
+    //update()
     query()
+
+start()
