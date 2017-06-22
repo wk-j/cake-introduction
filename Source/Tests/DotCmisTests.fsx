@@ -4,11 +4,16 @@
 open System.Collections.Generic
 
 open System
+
 open DotCMIS
+open DotCMIS.Client
 open DotCMIS.Client.Impl
+open DotCMIS.Data.Impl
+open DotCMIS.Data
+
 open System.Linq
 
-let start() = 
+let createSession () = 
     let parameters =  Dictionary<string, string>();
 
     parameters.[SessionParameter.BindingType] <- BindingType.AtomPub
@@ -20,7 +25,10 @@ let start() =
     //parameters.[SessionParameter.MaximumRequestRetries] <- "10000"
 
     let factory = SessionFactory.NewInstance()
-    let session = factory.CreateSession(parameters)
+    factory.CreateSession(parameters)
+
+let test() = 
+    let session = createSession()
     
     session.RepositoryInfo.VendorName |> printfn "%A"
 
@@ -37,9 +45,24 @@ let start() =
         printfn "%A" <| r.GetPropertyById("cmis:name").FirstValue
         printfn "%A" <| r.GetPropertyById("cmis:objectId").Values
 
-        let str = id.ToString()
-        printfn "%A" str
+        let str = id.ToString().Split(';').First()
+        printfn "%s" str
         let obj = session.GetObject(str)
         obj.Name |> printfn "%A"
+
+
+let getFolder() =
+    let session = createSession()
+
+    let root = session.GetRootFolder()
+    root.Name   |> printfn "%A"
+    root.Path   |> printfn "%A"
+
+    let home = session.GetObjectByPath("/Validate/Dir1/Dir2/Dir3") :?> IFolder
+    let tree = home.GetFolderTree(1)
+    printfn "%A" home.Path
+
+let start() = 
+    getFolder()
 
 start()
