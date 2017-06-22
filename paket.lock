@@ -100,7 +100,7 @@ NUGET
       System.Threading.Timer (>= 4.3) - framework: >= net451, >= netstandard12
       System.Xml.ReaderWriter (>= 4.3) - framework: >= netstandard10
       System.Xml.XDocument (>= 4.3) - framework: >= netstandard10
-    Newtonsoft.Json (10.0.2)
+    Newtonsoft.Json (10.0.3)
       Microsoft.CSharp (>= 4.3) - framework: netstandard10, >= netstandard13
       NETStandard.Library (>= 1.6.1) - framework: netstandard10, >= netstandard13
       System.ComponentModel.TypeConverter (>= 4.3) - framework: netstandard10, >= netstandard13
