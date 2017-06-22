@@ -17,7 +17,6 @@ type RemoteSection = RemoteSection of string array
 type RemoteRoot = RemoteRoot of string
 type LocalRoot = LocalRoot of string
 
-
 type Action  = 
     | CreateDir of RemoteRoot * RemoteRelativePath
     | CreateFile of RemoteRelativePath * LocalRelativePath
@@ -27,12 +26,10 @@ type MoveInfo = {
     NewPath : string
 }
 
-
 let splitWith (sep: string) (str: string) = str.Split([| sep |], StringSplitOptions.None)
 let cleanPath (str: string) = str.TrimEnd('/').Replace("//", "/").Replace("\\", "/")
 let toSections (data: string array) = [ for i in 0..data.Length do yield String.concat "/"  <| data.Take(i) ]
 let replace (a:string) b (c: string)= c.Replace(a, b)
-
 
 let createRelativeRemotePath (LocalRoot localRoot) (FullLocalPath localPath) = 
     let relative = replace localRoot "" localPath 

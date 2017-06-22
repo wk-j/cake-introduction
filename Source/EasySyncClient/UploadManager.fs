@@ -19,28 +19,33 @@ module UploadManager =
         let remoteRoot = RemoteRoot file.RemoteRoot 
         let localRoot = LocalRoot file.LocalRoot 
 
-        let success =
-            match action with
-            | FileAction.Created ->
-                client.UploadFile remoteRoot localRoot fullLocalPath
-            | FileAction.Deleted ->
-                client.DeleteFile remoteRoot localRoot fullLocalPath
-            | FileAction.Changed ->
-                client.UploadFile remoteRoot localRoot fullLocalPath
-            | FileAction.Renamed 
-            | FileAction.Moved ->
-                let info = { MoveInfo.OldPath = localPath; NewPath = file.NewPath }
-                client.MoveFile remoteRoot localRoot info
-            | _ -> false
+        let result =
+            async {
+                match action with
+                | FileAction.Created ->
+                    return! client.UploadFile remoteRoot localRoot fullLocalPath
+                | FileAction.Deleted ->
+                    return! client.DeleteFile remoteRoot localRoot fullLocalPath
+                | FileAction.Changed ->
+                    return! client.UploadFile remoteRoot localRoot fullLocalPath
+                | FileAction.Renamed 
+                | FileAction.Moved ->
+                    let info = { MoveInfo.OldPath = localPath; NewPath = file.NewPath }
+                    return! client.MoveFile remoteRoot localRoot info
+            } |> Async.RunSynchronously
 
-        if success then
+        match result with
+        | Success ->
             log "sync success %s" file.OriginalPath
             let newFile = { file with Status = Status.ProcessSuccess }
             DbManager.updateFile newFile
-        else
+        | Failed ex ->
             log ">> sync failed %s" file.OriginalPath
             let newFile = { file with Status = Status.ProcessFailed }
             DbManager.updateFile newFile
+        | Skip ->
+            log ">> skip %s" file.OriginalPath
+            file
 
     let start settings =
         let alfresco = AlfrescoClient(settings)

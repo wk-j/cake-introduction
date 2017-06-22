@@ -32,7 +32,6 @@ let private createFile (RemoteRoot remoteRoot) (LocalRoot localRoot) file newPat
     DbManager.updateFile model
 
 type ChangeManager(config) = 
-
     let changeMonitor = new ChangeWatcher()
     let settings = { Path = config.LocalPath; Pattern = "*.txt" }
     let mutable running = false
@@ -62,9 +61,7 @@ type ChangeManager(config) =
         result |> ignore
 
 type FolderManager(config) as this =
-
     let timer = new System.Timers.Timer(10000.0)    
-
     do 
         timer.AutoReset <- false
         timer.Elapsed.Add(this.Process)
@@ -104,7 +101,6 @@ type FolderManager(config) as this =
         member this.Dispose() = timer.Dispose()
 
 type SyncManger() = 
-
     member this.CreateFolderManager(endPoint, folder) = 
         new FolderManager(folder)
 
