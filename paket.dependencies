@@ -5,3 +5,5 @@ nuget WebDAVClient
 nuget Newtonsoft.Json
 nuget NLog
 nuget LiteDB
+nuget Apache.DotCMIS
+nuget OpenDataSpace.DotCMIS
