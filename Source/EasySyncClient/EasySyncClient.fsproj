@@ -55,6 +55,11 @@
     <Compile Include="UploadManager.fs" />
     <Compile Include="Managers.fs" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="../Tests/*.fsx"/>
+  </ItemGroup>
+
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">14</MinimumVisualStudioVersion>
   </PropertyGroup>
