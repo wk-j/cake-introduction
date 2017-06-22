@@ -10,4 +10,3 @@ let start() =
     Console.ReadLine()
 
 start()
-

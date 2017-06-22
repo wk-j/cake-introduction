@@ -5,6 +5,7 @@ open System.IO
 open EasySyncClient.Models
 open Newtonsoft.Json
 open System.Linq
+open EasySyncClient.Utility
 
 let private dir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
 
@@ -33,7 +34,7 @@ let writeConfig config =
 let touch { SyncFolder.LocalPath = local } = 
     let path = configPath (Local local)
     if File.Exists path then
-        printfn "touch file %s" path
+        log "touch file %s" path
         File.SetLastWriteTime(path, DateTime.Now)
     else
         File.WriteAllText(path, "")

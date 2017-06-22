@@ -17,7 +17,7 @@ let folder = {
 
 let start() =
 
-    let manager = ChangeManager(endPoint, folder)
+    let manager = ChangeManager folder 
     manager.StartWatch()
 
     Console.ReadLine()

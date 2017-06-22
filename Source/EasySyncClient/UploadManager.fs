@@ -32,6 +32,7 @@ module UploadManager =
                 | FileAction.Moved ->
                     let info = { MoveInfo.OldPath = localPath; NewPath = file.NewPath }
                     return! client.MoveFile remoteRoot localRoot info
+                | _ -> return Skip 
             } |> Async.RunSynchronously
 
         match result with
@@ -39,8 +40,8 @@ module UploadManager =
             log "sync success %s" file.OriginalPath
             let newFile = { file with Status = Status.ProcessSuccess }
             DbManager.updateFile newFile
-        | Failed ex ->
-            log ">> sync failed %s" file.OriginalPath
+        | Failed (ex, stack) ->
+            log ">> sync failed %s | %s | %s" file.OriginalPath ex stack
             let newFile = { file with Status = Status.ProcessFailed }
             DbManager.updateFile newFile
         | Skip ->

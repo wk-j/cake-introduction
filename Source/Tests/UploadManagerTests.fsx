@@ -16,7 +16,7 @@ let start() =
         RemotePath = "/alfresco/webdav/Validate"
     }
 
-    UploadManager.start config folder
+    UploadManager.start config
     Console.ReadLine()
 
-start()
+// start()

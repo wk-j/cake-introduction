@@ -8,31 +8,23 @@ open System.Net
 open System.IO
 open System.Threading.Tasks
 open EasySyncClient.Utility
+open System
 
 type UpdateResult = 
     | Success
-    | Failed of string
+    | Failed of string * string
     | Skip
 
 type AlfrescoClient(endPoint) = 
-
     let client = Client(NetworkCredential(UserName = endPoint.User, Password = endPoint.Password))
-    do 
-        client.Server <- endPoint.Url
-
-    (*
-    member this.ProcessAction = function
-        | CreateDir (remoteRoot, remotePath) ->
-            this.TryCreateDirectory remoteRoot remotePath
-        | _ -> false
-    *)
+    do client.Server <- endPoint.Url
 
     member this.TryCreateDirectory remoteRoot remotePath = 
         let full = createFullRemotePath remoteRoot remotePath |> fun (FullRemotePath path) -> path
 
         async {
-            do! Task.Delay(1000) |> Async.AwaitTask
             try 
+                do! Task.Delay(1000) |> Async.AwaitTask
                 log "try to create directory %s" full
                 let! items = client.GetFolder full |> Async.AwaitTask
                 return Success
@@ -42,31 +34,36 @@ type AlfrescoClient(endPoint) =
                     log "create %s => %s" path last
                     client.CreateDir(path, last) |> Async.AwaitTask |> ignore
                     return Success
-                with ex ->
-                    return Failed (ex.Message)
-        } 
+                with 
+                    | ex -> return Failed (ex.Message, ex.StackTrace)
+        }  |> Async.RunSynchronously
 
     member this.TryCreateDirectories remoteRoot remotePath  =
         async {
             let full = createFullRemotePathNoName remoteRoot remotePath |> fun (FullRemotePathNoName path) -> path
-            log "try to create directory %s" full
+            log "try to create directories %s" full
             try 
                 let! item = client.GetFolder full |> Async.AwaitTask
                 return Success
-            with ex ->
-                let sections = createRemoteSection remotePath 
-                let rootMap = this.TryCreateDirectory remoteRoot
-                sections |> List.map rootMap |> ignore
-                return Failed (ex.Message)
+            with 
+                | ex ->
+                    let sections = createRemoteSection remotePath 
+                    let createDir = this.TryCreateDirectory remoteRoot
+                    let results = sections |> List.map createDir
+                    return Success
         } 
 
     member this.CanUpdate (FullRemotePath remote) lastModified =
         async {
-            let! file = client.GetFile(remote) |> Async.AwaitTask
-            if file.LastModified.Value < lastModified then
-                return Success
-            else
-                return Skip
+            try 
+                log "can update %s" remote
+                let! file = client.GetFile(remote) |> Async.AwaitTask
+                log "can update %A" file.LastModified
+                if file.LastModified.Value < lastModified then
+                    return Success
+                else
+                    return Skip
+            with | ex -> return Success
         } 
 
     member this.DeleteFile remoteRoot localRoot fullLocalPath  = 
@@ -110,14 +107,14 @@ type AlfrescoClient(endPoint) =
                 let! canUpdate = this.CanUpdate targetPath date
                 match canUpdate with
                 | Success ->
-                    log "try to upload file %s => %s" path name
                     let! dir = this.TryCreateDirectories remoteRoot (getPath relativePath)
+                    log "try to upload file %s => %s" path name
                     let! item =  client.Upload(path, File.OpenRead(getLocalPath localPath), name) |> Async.AwaitTask
                     return Success
-                | Failed ex ->
-                    return Failed ex
+                | Failed (ex, stack) ->
+                    return Failed (ex, stack)
                 | Skip ->
                     return Skip
-            with ex ->
-                return Failed (ex.Message)
+            with 
+                | ex -> return Failed (ex.Message, ex.StackTrace)
         } 

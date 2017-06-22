@@ -17,7 +17,7 @@ let folder = {
 }
 
 let start() =
-    let mgr = new FolderManager(endPoint, folder)
+    let mgr = new FolderManager(folder)
     mgr.StartTimer()
 
     Console.ReadLine()
