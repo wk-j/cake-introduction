@@ -54,6 +54,7 @@
     <Compile Include="ChangeWatcher.fs" />
     <Compile Include="SettingsManager.fs" />
     <Compile Include="UploadManager.fs" />
+    <Compile Include="DownloadManager.fs" />
     <Compile Include="Managers.fs" />
   </ItemGroup>
   <ItemGroup>

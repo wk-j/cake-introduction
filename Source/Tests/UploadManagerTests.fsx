@@ -7,7 +7,7 @@ open System
 
 let start() =
     let config = {
-        EndPoint.Url = "http://192.168.0.109:8080"
+        EndPoint.Url = "http://192.168.0.109:8080/alfresco"
         User = "admin"
         Password =" admin" }
 
@@ -19,4 +19,4 @@ let start() =
     UploadManager.start config
     Console.ReadLine()
 
-// start()
+start()

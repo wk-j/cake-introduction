@@ -1,9 +1,0 @@
-
-Hello, world!
-
-
-Task.WaitAll(ts |> Seq.cast<Task> |> Array.ofSeq)
-Task.WaitAll(ts |> Seq.cast<Task> |> Array.ofSeq)
-Task.WaitAll(ts |> Seq.cast<Task> |> Array.ofSeq)
-Task.WaitAll(ts |> Seq.cast<Task> |> Array.ofSeq)
-Task.WaitAll(ts |> Seq.cast<Task> |> Array.ofSeq)
