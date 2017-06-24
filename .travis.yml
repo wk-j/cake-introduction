@@ -12,5 +12,5 @@ before_script:
   - ./build.sh --target Restore-Solution
 
 script:
-  - ./build.sh --target Test-Project 
+  - ./build.sh --target Run-Test 
   - ./build.sh --target Publish-NuGet
