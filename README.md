@@ -1,5 +1,7 @@
 ## Cake Introduction
 
+[![Build Status](https://travis-ci.org/wk-j/cake-introduction.svg?branch=master)](https://travis-ci.org/wk-j/cake-introduction)
+
 ## 1. Install bootstraper
 
 ### Windows

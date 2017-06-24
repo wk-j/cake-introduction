@@ -1,3 +1,3 @@
 Task("Build-Solution").Does(() => {
-    BuildDotNetCore(solution);
+    DotNetCoreBuild(solution);
 });
