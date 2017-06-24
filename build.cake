@@ -1,9 +1,15 @@
 #tool "nuget:?package=gitreleasemanager"
+//#tool "nuget:?package=JetBrains.ReSharper.CommandLineTools"
 
 var solution = "HelloApp.sln";
 var mainProject = "Source/HelloApp/HelloApp.csproj";
 var libraryProject = "Source/HelloLib/HelloLib.csproj";
 var testProject = "Source/HelloLib.Tests/HelloLib.Tests.csproj";
+
+
+Task("Run-DupFinder").Does(() => {
+    // DupFinder(solution);
+});
 
 Task("Restore-Solution").Does(() => {
     DotNetCoreRestore(solution);
