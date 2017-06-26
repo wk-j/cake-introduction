@@ -107,6 +107,24 @@ type CmisClient (settings, folder) =
         let sections = splitWith "/" (targetPath.TrimStart('/'))
         sections |> Array.fold (createDir) "/"
 
+    member this.GetDocument targetPath = 
+        try 
+            session.GetObjectByPath targetPath :?> IDocument |> Some
+        with ex ->
+            None
+
+    member this.UpdateDocument targetPath localPath = 
+        let doc = this.GetDocument targetPath
+        match doc with
+        | None -> 
+            this.CreateDocument targetPath localPath |> ignore
+        | Some document -> 
+            let mimetype = "plain/text"
+            let stream = new FileStream(localPath, FileMode.Open)
+            let length = stream.Length
+            let contentStream = session.ObjectFactory.CreateContentStream(document.Name, int64 length, mimetype, stream);
+            document.SetContentStream(contentStream, true, true) |> ignore
+
     member this.CreateDocument targetPath localPath = 
         let (path, name) = extractFullRemotePath (FullRemotePath targetPath)
         this.CreateFolders path |> ignore
@@ -126,8 +144,8 @@ type CmisClient (settings, folder) =
         try 
             let newDoc = parent.CreateDocument(properties, contentStream, VersioningState.Minor |> Nullable)
             true
-        with ex -> false
-        
+        with ex -> 
+            false
 
     member this.StartSync() = 
         let folder = session.GetObjectByPath(remoteRoot) :?> IFolder
