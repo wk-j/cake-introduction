@@ -47,7 +47,7 @@ type AlfrescoClient(endPoint) =
                 return Success
             with 
                 | ex ->
-                    let sections = createRemoteSection remotePath 
+                    let sections = createRemoteSections remotePath 
                     let createDir = this.TryCreateDirectory remoteRoot
                     let results = sections |> List.map createDir
                     return Success

@@ -13,7 +13,6 @@ type FullRemotePathNoName = FullRemotePathNoName of string
 
 type FullLocalPath = FullLocalPath of string
 
-type RemoteSection = RemoteSection of string array
 type RemoteRoot = RemoteRoot of string
 type LocalRoot = LocalRoot of string
 
@@ -37,7 +36,7 @@ let createRelativeRemotePath (LocalRoot localRoot) (FullLocalPath localPath) =
     let name = Path.GetFileName relative 
     relative |> RemoteRelativePath
 
-let createRemoteSection (RemoteRelativeNoName path) =
+let createRemoteSections (RemoteRelativeNoName path) =
     let path = path |> cleanPath
     splitWith "/" path |> toSections |> List.map RemoteRelativePath
 
