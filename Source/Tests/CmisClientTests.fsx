@@ -22,12 +22,17 @@ let go() =
     client.OnMeetObject.Subscribe(fun x -> log "%A" x) |> ignore
     client.StartSync()
 
-
 let createFolder() =
     let client = CmisClient(settings, folder)
-    let root = RemoteRoot "/Validate"
-    let relative = "YYY/BBB/CCC/DDD/EEE"
-    let rs = client.CreateFolders root relative
+    let relative = "/Validate/YYY/BBB/CCC/DDD/EEE"
+    let rs = client.CreateFolders relative
     rs |> printfn "%A"
 
-createFolder()
+let createDocument() =
+    let client = CmisClient(settings, folder)
+    let target = "/Validate/KKK/KKK/Hello.txt"
+    let rs = client.CreateDocument target "Resource/Test1.txt"
+    rs |> printfn "%A"
+
+//createFolder()
+createDocument()

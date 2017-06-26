@@ -4,13 +4,16 @@ module EasySyncClient.CmisClient
 open DotCMIS
 open DotCMIS.Client
 open DotCMIS.Client.Impl
+open DotCMIS.Enums
 open System.Collections.Generic
 open EasySyncClient.Models
 open EasySyncClient.ClientModels
 open EasySyncClient.Utility
 open System.Threading
+open System.Text
 open System.IO
 open System
+open System.Web
 
 type SyncObject =
     | File of FullPath * RelativePath
@@ -76,13 +79,13 @@ type CmisClient (settings, folder) =
             else
                 None
 
-    member this.CreateFolders  rootPath relativePath = 
-        let getRawPath (FullRemotePath path) = path
-        let getRootPath(RemoteRoot root) = root;
-
-        //let createDir (folder: IFolder) name = 
+    member this.CreateFolders (targetPath: string) = 
         let createDir rootPath name = 
-            let nextPath = rootPath + "/" + name
+            let nextPath = 
+                if rootPath = "/" then 
+                    rootPath + name
+                else
+                    rootPath + "/" + name
             log "next path => %A" nextPath
 
             match this.Exist nextPath 0 with
@@ -101,11 +104,30 @@ type CmisClient (settings, folder) =
             | Some folder ->
                 nextPath
 
-        let rootPath = getRootPath rootPath
-        let root = session.GetObjectByPath(rootPath) :?> IFolder
+        let sections = splitWith "/" (targetPath.TrimStart('/'))
+        sections |> Array.fold (createDir) "/"
 
-        let sections = splitWith "/" relativePath
-        sections |> Array.fold (createDir) root.Path
+    member this.CreateDocument targetPath localPath = 
+        let (path, name) = extractFullRemotePath (FullRemotePath targetPath)
+        this.CreateFolders path |> ignore
+
+        let mimetype = "plain/text"
+        let stream = new FileStream(localPath, FileMode.Open)
+        let length = stream.Length
+
+        let contentStream = session.ObjectFactory.CreateContentStream(name, int64 length, mimetype, stream);
+        let properties = new Dictionary<string, Object>()
+        properties.[PropertyIds.Name] <- name
+        properties.[PropertyIds.ObjectTypeId] <- "cmis:document"
+
+        let parent = session.GetObjectByPath (path) :?> IFolder
+
+        log "create document %A => %A" parent.Path name 
+        try 
+            let newDoc = parent.CreateDocument(properties, contentStream, VersioningState.Minor |> Nullable)
+            true
+        with ex -> false
+        
 
     member this.StartSync() = 
         let folder = session.GetObjectByPath(remoteRoot) :?> IFolder

@@ -1,0 +1,22 @@
+IFolder parent = ....
+
+string textFileName = "test.txt";
+
+// prepare content - a simple text file
+string content = "Hello World!";
+
+string filename = textFileName;
+string mimetype = "text/plain; charset=UTF-8";
+
+byte[] contentBytes = Encoding.UTF8.GetBytes(content);
+Stream stream = new MemoryStream(contentBytes);
+
+IContentStream contentStream = session.ObjectFactory.CreateContentStream(filename, contentBytes.length, mimetype, stream);
+
+// prepare properties
+IDictionary<string, object> properties = new Dictionary<string, object>();
+properties[PropertyIds.Name] = textFileName;
+properties[PropertyIds.ObjectTypeId] = "cmis:document";
+
+// create the document
+IDocument newDoc = parent.CreateDocument(properties, contentStream, VersioningState.None);
