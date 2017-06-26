@@ -31,7 +31,7 @@ let createFolder() =
 let createDocument() =
     let client = CmisClient(settings, folder)
     let target = "/Validate/KKK/KKK/Hello.txt"
-    let rs = client.CreateDocument target "Resource/Test1.txt"
+    let rs = client.UpdateDocument target "Resource/Test1.txt"
     rs |> printfn "%A"
 
 let updateDocument() =
@@ -40,6 +40,12 @@ let updateDocument() =
     let rs = client.UpdateDocument target "Resource/Test1.txt"
     rs |> printfn "%A"
 
-updateDocument()
+let downloadDocument() =
+    let client = CmisClient(settings, folder)
+    let target = "/Validate/KKK/KKK/Hello.txt"
+    client.DowloadDocument target "Resource/KKK.txt"
+
+downloadDocument()
+//updateDocument()
 //createFolder()
 //createDocument()

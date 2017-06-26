@@ -1,5 +1,4 @@
 module EasySyncClient.Managers
-
 open System
 open System.Threading
 open System.IO

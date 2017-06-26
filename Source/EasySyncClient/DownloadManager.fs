@@ -18,10 +18,13 @@ type DownloadManager(settings, folder) =
             log "create local directory %s" path
             Directory.CreateDirectory path |> ignore
 
+    let createFile (RelativePath relative) (FullPath fullPath) = 
+        ()
+
     let handler data = 
         match data with
-        | Folder (full, relative) -> createFolder(relative)
-        | File (full, relative) -> ()
+        | Folder (full, relative) -> createFolder relative
+        | File (full, relative) -> createFile relative full
 
     member this.Start() =
         client.OnMeetObject.Subscribe(handler) |> ignore

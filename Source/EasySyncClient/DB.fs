@@ -25,9 +25,9 @@ type QFile = {
     NewPath : string
     CreationTime: DateTime
     LastWriteTime: DateTime
+    LastAccessTime: DateTime
     RemoteRoot: string
     LocalRoot: string
-    LastAccessTime: DateTime
 }
 
 module DbManager = 

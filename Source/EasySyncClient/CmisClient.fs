@@ -21,6 +21,10 @@ type SyncObject =
 and FullPath = FullPath of string
 and RelativePath = RelativePath of string
 
+type UpdateStatus =
+    | Success of DateTime
+    | Failed of string
+
 let private createSession (settings) = 
     let url = settings.Url
     let user = settings.User
@@ -66,18 +70,20 @@ type CmisClient (settings, folder) =
 
     member this.OnMeetObject = onMeetObject
 
-    //member this.CreateFolders ()
-
-    member this.Exist path count = 
+    member private this.IsExist path count = 
         try 
-            let rs = session.GetObjectByPath(path) :?> IFolder
+            let rs = session.GetObjectByPath(path)
             Some rs
         with ex -> 
             if count < 3 then
                 Thread.Sleep 300
-                this.Exist path (count + 1)
+                this.IsExist path (count + 1)
             else
                 None
+
+    member this.MoveFile originalPath newPath  = 
+        let doc = session.GetObjectByPath(originalPath)
+        ()
 
     member this.CreateFolders (targetPath: string) = 
         let createDir rootPath name = 
@@ -88,7 +94,7 @@ type CmisClient (settings, folder) =
                     rootPath + "/" + name
             log "next path => %A" nextPath
 
-            match this.Exist nextPath 0 with
+            match this.IsExist nextPath 0 with
             | None ->
                 log "get path => %A" rootPath
                 let root = session.GetObjectByPath(rootPath) :?> IFolder
@@ -107,7 +113,7 @@ type CmisClient (settings, folder) =
         let sections = splitWith "/" (targetPath.TrimStart('/'))
         sections |> Array.fold (createDir) "/"
 
-    member this.GetDocument targetPath = 
+    member private this.GetDocument targetPath = 
         try 
             session.GetObjectByPath targetPath :?> IDocument |> Some
         with ex ->
@@ -117,15 +123,28 @@ type CmisClient (settings, folder) =
         let doc = this.GetDocument targetPath
         match doc with
         | None -> 
-            this.CreateDocument targetPath localPath |> ignore
+            this.CreateDocument targetPath localPath
         | Some document -> 
             let mimetype = "plain/text"
             let stream = new FileStream(localPath, FileMode.Open)
             let length = stream.Length
             let contentStream = session.ObjectFactory.CreateContentStream(document.Name, int64 length, mimetype, stream);
             document.SetContentStream(contentStream, true, true) |> ignore
+            let date = document.LastModificationDate.Value
+            Success (date)
 
-    member this.CreateDocument targetPath localPath = 
+    member this.DowloadDocument remotePath downloadPath = 
+        let localInfo = FileInfo(downloadPath)
+        if localInfo.Exists |> not then
+            let remote = session.GetObjectByPath(remotePath) :?> IDocument
+            do
+                let remoteStream = remote.GetContentStream()
+                use fileStream = new FileStream(downloadPath, FileMode.Create)
+                let stream = remoteStream.Stream
+                stream.CopyTo(fileStream)
+            File.SetLastWriteTime(downloadPath, remote.LastModificationDate.Value)
+
+    member private this.CreateDocument targetPath localPath = 
         let (path, name) = extractFullRemotePath (FullRemotePath targetPath)
         this.CreateFolders path |> ignore
 
@@ -138,14 +157,20 @@ type CmisClient (settings, folder) =
         properties.[PropertyIds.Name] <- name
         properties.[PropertyIds.ObjectTypeId] <- "cmis:document"
 
-        let parent = session.GetObjectByPath (path) :?> IFolder
-
-        log "create document %A => %A" parent.Path name 
         try 
+            let parent = session.GetObjectByPath (path) :?> IFolder
+            log "create document %A => %A" parent.Path name 
             let newDoc = parent.CreateDocument(properties, contentStream, VersioningState.Minor |> Nullable)
-            true
+            let date = newDoc.LastModificationDate.Value;
+            Success date
         with ex -> 
-            false
+            let exist = this.IsExist targetPath 0
+            match exist with
+            | Some obj -> 
+                let date = obj.LastModificationDate.Value
+                Success date
+            | None ->
+                Failed ex.Message
 
     member this.StartSync() = 
         let folder = session.GetObjectByPath(remoteRoot) :?> IFolder
