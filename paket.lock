@@ -26,9 +26,6 @@ NUGET
       System.Threading.ThreadPool (>= 4.0.10) - framework: >= net463, >= netstandard16
       System.Threading.Timer (>= 4.0.1) - framework: >= net463, >= netstandard16
     LiteDB (3.1.1)
-    Microsoft.Bcl (1.1.10) - framework: >= net45, monoandroid, monotouch, xamarinios
-      Microsoft.Bcl.Build (>= 1.0.14)
-    Microsoft.Bcl.Build (1.0.21) - import_targets: false, framework: >= net45, monoandroid, monotouch, xamarinios
     Microsoft.CSharp (4.3) - framework: netstandard10, >= netstandard13
       System.Collections (>= 4.3) - framework: dnxcore50, >= netstandard13
       System.Diagnostics.Debug (>= 4.3) - framework: dnxcore50, >= netstandard13
@@ -46,9 +43,6 @@ NUGET
       System.Runtime.Extensions (>= 4.3) - framework: dnxcore50, >= netstandard13
       System.Runtime.InteropServices (>= 4.3) - framework: dnxcore50, >= netstandard13
       System.Threading (>= 4.3) - framework: dnxcore50, >= netstandard13
-    Microsoft.Net.Http (2.2.29) - framework: >= net45, monoandroid, monotouch, xamarinios
-      Microsoft.Bcl (>= 1.1.10)
-      Microsoft.Bcl.Build (>= 1.0.14)
     Microsoft.NETCore.Platforms (1.1) - framework: >= net463, netstandard10, >= netstandard13, netstandard14
     Microsoft.NETCore.Targets (1.1) - framework: >= net463, netstandard10, >= netstandard13, netstandard14
     Microsoft.Win32.Primitives (4.3) - framework: >= netstandard13
@@ -664,5 +658,3 @@ NUGET
       System.Text.Encoding (>= 4.3) - framework: >= netstandard13
       System.Threading (>= 4.3) - framework: >= netstandard13
       System.Xml.ReaderWriter (>= 4.3) - framework: >= netstandard13
-    WebDAVClient (1.1.2)
-      Microsoft.Net.Http (>= 2.2.28) - framework: >= net45, monoandroid, monotouch, xamarinios

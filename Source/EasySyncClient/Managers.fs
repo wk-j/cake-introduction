@@ -1,6 +1,5 @@
 module EasySyncClient.Managers
 
-open WebDAVClient
 open System
 open System.Threading
 open System.IO
@@ -10,7 +9,6 @@ open System.Linq
 open System.Net
 open System.Threading.Tasks
 open EasySyncClient.FileWatcher
-open EasySyncClient.UploadManager
 open EasySyncClient.ClientModels
 open EasySyncClient.DB
 open EasySyncClient.Utility
@@ -117,5 +115,5 @@ type SyncManger() =
         let change = ChangeManager(config.Folders.[0])
         change.StartWatch()
 
-        UploadManager.start config.EndPoint
+        //UploadManager.start config.EndPoint
 

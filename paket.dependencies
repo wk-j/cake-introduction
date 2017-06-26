@@ -1,7 +1,6 @@
 source https://www.nuget.org/api/v2
 
 nuget FSharp.Core
-nuget WebDAVClient
 nuget Newtonsoft.Json
 nuget NLog
 nuget LiteDB

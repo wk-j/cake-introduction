@@ -8,6 +8,7 @@ open System
 open EasySyncClient.Utility
 open System.Threading
 
+
 type FileStatus = 
     | Deleted
     | Created
