@@ -1,4 +1,3 @@
-
 module EasySyncClient.CmisClient
 
 open DotCMIS
@@ -14,6 +13,7 @@ open System.Text
 open System.IO
 open System
 open System.Web
+open System.Linq
 
 type SyncObject =
     | File of FullPath * RelativePath
@@ -162,6 +162,8 @@ type CmisClient (settings, folder) =
             log "create document %A => %A" parent.Path name 
             let newDoc = parent.CreateDocument(properties, contentStream, VersioningState.Minor |> Nullable)
             let date = newDoc.LastModificationDate.Value;
+            log "last modify %A" date
+            File.SetLastWriteTime(localPath, date)
             Success date
         with ex -> 
             let exist = this.IsExist targetPath 0
@@ -172,6 +174,33 @@ type CmisClient (settings, folder) =
             | None ->
                 Failed ex.Message
 
-    member this.StartSync() = 
+    member this.DownSync() = 
         let folder = session.GetObjectByPath(remoteRoot) :?> IFolder
         syncChild folder
+
+    member this.UpSync() =
+        let uncurry f (x,y) = f x y 
+        let root = DirectoryInfo(folder.LocalPath)
+        let convertPath (dir: FileInfo) = 
+            let rel = 
+                dir.FullName.Replace(root.FullName, "")
+                    .TrimStart('/')
+                    .TrimStart('\\')
+                    .Replace("\\", "/")
+            let localPath = dir.FullName
+            let remotePath = folder.RemotePath + "/" + rel
+            (remotePath , localPath)
+
+        let rec syncFolder(dir: DirectoryInfo) = 
+            let dirs = dir.GetDirectories()
+            for child in dir.GetDirectories() 
+                do syncFolder child  |> ignore
+
+            let un = uncurry this.UpdateDocument
+            dir.GetFiles() 
+            |> Array.filter (fun x -> x.Name.StartsWith(".") |> not) 
+            |> Array.map (convertPath >> un)
+
+        let folder = DirectoryInfo(folder.LocalPath)
+        let x = syncFolder(root)
+        ()

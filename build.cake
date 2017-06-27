@@ -1,7 +1,8 @@
 var project = "Source/EasySyncClient/EasySyncClient.fsproj";
+var console = "Source/EasySyncClient.Console/EasySyncClient.Console.fsproj";
 
 Task("Build").Does(() => {
-    MSBuild(project);
+    MSBuild(console);
 });
 
 Task("Watch").Does(() => {

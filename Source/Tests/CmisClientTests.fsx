@@ -20,7 +20,7 @@ let settings = {
 let go() =
     let client = CmisClient(settings, folder)
     client.OnMeetObject.Subscribe(fun x -> log "%A" x) |> ignore
-    client.StartSync()
+    //client.DownSync()
 
 let createFolder() =
     let client = CmisClient(settings, folder)
@@ -45,7 +45,7 @@ let downloadDocument() =
     let target = "/Validate/KKK/KKK/Hello.txt"
     client.DowloadDocument target "Resource/KKK.txt"
 
-downloadDocument()
+//downloadDocument()
 //updateDocument()
 //createFolder()
 //createDocument()

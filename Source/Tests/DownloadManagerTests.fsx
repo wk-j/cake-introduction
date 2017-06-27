@@ -2,6 +2,7 @@
 
 open EasySyncClient.DownloadManager
 open EasySyncClient.Models
+open System.IO
 
 let start() =
     let settings = {
@@ -10,9 +11,10 @@ let start() =
         Password = "admin"
     }
     let folder = {
-        LocalPath = "Resource"
+        LocalPath = DirectoryInfo("Resource").FullName
         RemotePath = "/Validate"
     }
     let mgr = DownloadManager(settings, folder)
-    mgr.Start()
+    mgr.StartUpSync()
+
 start()
