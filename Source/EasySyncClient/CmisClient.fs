@@ -22,7 +22,7 @@ and FullPath = FullPath of string
 and RelativePath = RelativePath of string
 
 type UpdateStatus =
-    | Success of DateTime
+    | Success
     | Failed of string
     | Skip
 
@@ -122,6 +122,15 @@ type CmisClient (settings, folder) =
         with ex ->
             None
 
+    member this.Rename originalPath newName = 
+        let doc = this.GetDocument originalPath
+        match doc with
+        | None -> 
+            Skip
+        | Some doc ->
+            doc.Rename(newName) |> ignore
+            Success
+
     member this.DeleteDocument targetPath = 
         let doc = this.GetDocument targetPath
         match doc with
@@ -129,7 +138,7 @@ type CmisClient (settings, folder) =
             Failed "File not exist"
         | Some d ->
             d.Delete(true)
-            Success (d.LastModificationDate.Value)
+            Success 
 
     member this.Touch targetPath dateTime = 
         let document = this.GetDocument targetPath
@@ -156,7 +165,7 @@ type CmisClient (settings, folder) =
                 let length = stream.Length
                 let contentStream = session.ObjectFactory.CreateContentStream(document.Name, int64 length, mimetype, stream);
                 document.SetContentStream(contentStream, true) |> ignore
-                Success (date)
+                Success
         this.Touch targetPath date
         (result)
 
@@ -203,13 +212,12 @@ type CmisClient (settings, folder) =
             let date = newDoc.LastModificationDate.Value;
             log "last modify %A" date
             File.SetLastWriteTime(localPath, date)
-            Success date
+            Success
         with ex -> 
             let exist = this.IsExist targetPath 0
             match exist with
             | Some obj -> 
-                let date = obj.LastModificationDate.Value
-                Success date
+                Success 
             | None ->
                 Failed ex.Message
 
