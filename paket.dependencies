@@ -6,3 +6,4 @@ nuget NLog
 nuget LiteDB
 nuget Apache.DotCMIS
 nuget OpenDataSpace.DotCMIS
+nuget MediaTypeMap

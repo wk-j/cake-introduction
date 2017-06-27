@@ -11,7 +11,6 @@ let private dir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfil
 
 let private configPath = function
     | Global -> Path.Combine(dir, ".easy-sync-global")
-    | Local path -> Path.Combine(path, ".easy-sync-local")
 
 let globalConfig() =
     let file = configPath Global
@@ -30,18 +29,3 @@ let writeConfig config =
     let file = configPath Global
     let json = JsonConvert.SerializeObject(config)
     File.WriteAllText (file, json)
-
-let touch { SyncFolder.LocalPath = local } = 
-    let path = configPath (Local local)
-    if File.Exists path then
-        log "touch file %s" path
-        File.SetLastWriteTime(path, DateTime.Now)
-    else
-        File.WriteAllText(path, "")
-
-let getTouchDate { SyncFolder.LocalPath = local } = 
-    let path = configPath (Local local)
-    if File.Exists path then
-        File.GetLastWriteTime (path)
-    else 
-        System.DateTime.MinValue

@@ -9,7 +9,7 @@ let config = SettingsManager.globalConfig()
 
 let syncFolder = {
     SyncFolder.LocalPath = "/Users/wk/Source/project/easy-sync/EasySyncClient/Resource"
-    RemotePath = "/alfresco/webdav/Validate"
+    RemotePath = "/Validate"
 }
 
 let newConfig = { config with Folders = [syncFolder] }

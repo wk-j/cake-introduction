@@ -12,5 +12,11 @@ Task("Watch").Does(() => {
     });
 });
 
+Task("Run").Does(() => {
+    StartProcess("mono", new ProcessSettings {
+        Arguments = "Source/EasySyncClient.Console/bin/Debug/EasySyncClient.Console.exe"
+    });
+});
+
 var target = Argument("target", "default");
 RunTarget(target);

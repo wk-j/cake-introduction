@@ -1,8 +1,12 @@
 module EasySyncClient.Console
 
-open EasySyncClient.ClientModels
+open EasySyncClient.Managers
+open EasySyncClient.Utility
 
 [<EntryPoint>]
 let main argv =
-    printfn "%A" argv
+    let manager = SyncManger()
+    manager.StartSync()
+    while System.Console.ReadLine() = "x" do
+        log "..."
     0 // return an integer exit code

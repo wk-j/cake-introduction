@@ -24,6 +24,7 @@ and RelativePath = RelativePath of string
 type UpdateStatus =
     | Success of DateTime
     | Failed of string
+    | Skip
 
 let private createSession (settings) = 
     let url = settings.Url
@@ -115,40 +116,78 @@ type CmisClient (settings, folder) =
 
     member private this.GetDocument targetPath = 
         try 
-            session.GetObjectByPath targetPath :?> IDocument |> Some
+            log "get document => %s" targetPath
+            let doc = session.GetObjectByPath targetPath :?> IDocument
+            doc.GetObjectOfLatestVersion(false) |> Some
         with ex ->
             None
 
-    member this.UpdateDocument targetPath localPath = 
+    member this.DeleteDocument targetPath = 
         let doc = this.GetDocument targetPath
         match doc with
-        | None -> 
-            this.CreateDocument targetPath localPath
-        | Some document -> 
-            let mimetype = "plain/text"
-            let stream = new FileStream(localPath, FileMode.Open)
-            let length = stream.Length
-            let contentStream = session.ObjectFactory.CreateContentStream(document.Name, int64 length, mimetype, stream);
-            document.SetContentStream(contentStream, true, true) |> ignore
-            let date = document.LastModificationDate.Value
-            Success (date)
+        | None ->
+            Failed "File not exist"
+        | Some d ->
+            d.Delete(true)
+            Success (d.LastModificationDate.Value)
+
+    member this.Touch targetPath dateTime = 
+        let document = this.GetDocument targetPath
+        match document with 
+        | Some document ->
+            let properties = 
+                dict [
+                    "cmis:lastModificationDate", dateTime
+                ]
+            document.UpdateProperties properties |> ignore
+        | None -> ()
+
+    member this.UpdateDocument targetPath localPath = 
+        let date = File.GetLastWriteTime localPath
+        let doc = this.GetDocument targetPath
+        let result = 
+            match doc with
+            | None -> 
+                this.CreateDocument targetPath localPath
+            | Some document -> 
+                log "update document %A" localPath
+                let mimetype = "plain/text"
+                use stream = new FileStream(localPath, FileMode.Open, FileAccess.Read)
+                let length = stream.Length
+                let contentStream = session.ObjectFactory.CreateContentStream(document.Name, int64 length, mimetype, stream);
+                document.SetContentStream(contentStream, true) |> ignore
+                Success (date)
+        this.Touch targetPath date
+        (result)
 
     member this.DowloadDocument remotePath downloadPath = 
         let localInfo = FileInfo(downloadPath)
+        let remote = session.GetObjectByPath(remotePath) :?> IDocument
         if localInfo.Exists |> not then
-            let remote = session.GetObjectByPath(remotePath) :?> IDocument
-            do
-                let remoteStream = remote.GetContentStream()
-                use fileStream = new FileStream(downloadPath, FileMode.Create)
-                let stream = remoteStream.Stream
-                stream.CopyTo(fileStream)
-            File.SetLastWriteTime(downloadPath, remote.LastModificationDate.Value)
+            this.StartDownload remote downloadPath
+        else 
+            let modify = File.GetLastWriteTime(downloadPath)
+            if (remote.LastModificationDate.Value > modify) then
+                log "skip change => %s" downloadPath
+            else
+                this.StartDownload remote downloadPath
+
+    member private this.StartDownload (remote : IDocument) downloadPath = 
+        do
+            let remoteStream = remote.GetContentStream()
+            use fileStream = new FileStream(downloadPath, FileMode.Create)
+            let stream = remoteStream.Stream
+            stream.CopyTo(fileStream)
+        File.SetLastWriteTime(downloadPath, remote.LastModificationDate.Value)
+
+    member private this.GetMimetype localPath = 
+        MimeTypes.MimeTypeMap.GetMimeType (Path.GetExtension localPath)
 
     member private this.CreateDocument targetPath localPath = 
         let (path, name) = extractFullRemotePath (FullRemotePath targetPath)
         this.CreateFolders path |> ignore
 
-        let mimetype = "plain/text"
+        let mimetype = this.GetMimetype localPath
         let stream = new FileStream(localPath, FileMode.Open)
         let length = stream.Length
 
@@ -175,6 +214,7 @@ type CmisClient (settings, folder) =
                 Failed ex.Message
 
     member this.DownSync() = 
+        log "down sync root = %A" remoteRoot
         let folder = session.GetObjectByPath(remoteRoot) :?> IFolder
         syncChild folder
 

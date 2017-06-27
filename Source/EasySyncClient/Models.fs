@@ -20,4 +20,3 @@ type Config = {
 
 type ConfigFile = 
     | Global
-    | Local of string

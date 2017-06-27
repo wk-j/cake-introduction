@@ -38,7 +38,6 @@ type ChangeWatcher()  =
             timer.Dispose()
 
     member private this.AcumChanges fileChange = 
-        // log "change => %s => %A" fileChange.FullPath fileChange.FileStatus
         if not processing then
             timer.Start()
             unNotifiedChanages.Add fileChange
