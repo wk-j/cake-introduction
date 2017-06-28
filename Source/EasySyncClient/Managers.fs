@@ -54,18 +54,13 @@ type ChangeManager(config : SyncFolder, cmis: CmisClient) =
 
 type SyncManger() = 
 
-    let timer = new Timers.Timer(10000.)
+    let timer = new Timers.Timer(1000.)
 
     member this.StartSync() = 
 
         let config = SettingsManager.globalConfig()
-        //let endPoint = config.EndPoint
-        let folders = config.Folders
-
-        let endPoint = { Alfresco = "http://192.168.0.109:8080/alfresco"; User = "admin"; Password = "admin" }
-
+        let endPoint = config.EndPoint
         let folder0 = config.Folders.[0]
-
         let client = CmisClient(endPoint, folder0)
 
         //let change = ChangeManager(folder0, client)

@@ -56,6 +56,10 @@ type CmisClient (settings, folder) as this =
         let trim = relative.TrimStart('/').TrimStart('\\').Replace('\\', '/')
         remoteRoot + "/" + trim
 
+    let diff (d1: DateTime) (d2:DateTime) = 
+        let diff = (d1 - d2).TotalMinutes
+        diff > 5.0
+
     let rec syncLocalChild (folder: DirectoryInfo) = 
         let dirs = folder.GetDirectories()
         let files = folder.GetFiles()
@@ -71,10 +75,11 @@ type CmisClient (settings, folder) as this =
                 let db = DbManager.queryFolder remoteRoot relative
                 match db with
                 | Some folder ->
-                    log "try to delete local folder | %s" dir.FullName
+                    log "[c] try to delete local folder %A" dir.FullName
                     dir.Delete(true)
                     DbManager.deleteFolder folder.Id |> ignore
                 | None ->
+                    log "[c] create remote folder %A" remotePath
                     this.CreateFolders remotePath |> ignore
                     let newFolder = { QFolder.Id = 0; RemoteRoot = remoteRoot; RelativePath = relative }
                     DbManager.updateFolder newFolder |> ignore
@@ -90,22 +95,28 @@ type CmisClient (settings, folder) as this =
                 let db = DbManager.queryFile remoteRoot relative
                 match db with
                 | None ->
+                    log "[c] upload document %A" fullPath
                     this.UpdateDocument remotePath fullPath |> ignore
                     let newFile = { QFile.Id = 0; RemoteRoot = remoteRoot; RelativePath = relative; Md5 = "" }
                     DbManager.updateFile newFile |> ignore
                 | Some file ->
+                    log "[c] delete local document %A" fullPath
                     File.Delete fullPath
                     DbManager.deleteFile file.Id |> ignore
             | Some file ->
-                let last = file.LastModificationDate.Value
-                if File.GetLastWriteTime(fullPath) < last then
-                    this.UpdateDocument  remotePath fullPath |> ignore
+                let remoteDate = file.LastModificationDate.Value
+                let localDate = File.GetLastWriteTime fullPath
+                if diff localDate remoteDate then
+                    log "[c] upload document %A" fullPath
+                    this.UpdateDocument remotePath fullPath |> ignore
+                elif diff remoteDate localDate then
+                    log "[c] download document %A" remotePath
+                    this.StartDownload file fullPath  |> ignore
 
     let rec syncRemoteChild (folder: IFolder) = 
         let childs = folder.GetChildren()
         for child in childs do
             if child :? DotCMIS.Client.Impl.Folder then
-                log "process folder => %A" folder.Path
                 let remoteFolder = child :?> IFolder    
                 let fullPath = remoteFolder.Path
                 let relative = createRemoteRelative fullPath
@@ -116,10 +127,11 @@ type CmisClient (settings, folder) as this =
                     let db = DbManager.queryFolder remoteRoot relative 
                     match db with
                     | Some folder ->
-                        log "try to remote remote folder | %s" fullPath    
+                        log "[r] try to delete remote folder %A" fullPath    
                         this.DeleteFolder fullPath          |> ignore
                         DbManager.deleteFolder folder.Id    |> ignore
                     | None -> 
+                        log "[r] create local folder %A" localPath   
                         let newDb = { Id = 0; RemoteRoot = remoteRoot; RelativePath = relative }
                         DbManager.updateFolder newDb            |> ignore
                         Directory.CreateDirectory localPath     |> ignore
@@ -127,24 +139,28 @@ type CmisClient (settings, folder) as this =
             else if child :? DotCMIS.Client.Impl.Document then
                 let remoteFile = child :?> IDocument
                 let fullPath = String.Join("/", remoteFile.Paths)
-
-                log "process file => %A" fullPath
-
                 let relative = createRemoteRelative fullPath
                 let localPath = createLocalPath relative
 
                 if File.Exists localPath then
-                    if child.LastModificationDate.Value > File.GetLastWriteTime localPath then
+                    let remoteDate = child.LastModificationDate.Value
+                    let localDate = File.GetLastWriteTime localPath
+
+                    if diff remoteDate localDate then
+                        log "[r] download document %A" fullPath
                         this.DowloadDocument fullPath localPath |> ignore
-                    else
+                    elif diff localDate remoteDate then
+                        log "[r] upload document %A" localPath
                         this.UpdateDocument fullPath localPath  |> ignore
                 else
                     let db = DbManager.queryFile remoteRoot relative
                     match db with
                     | Some file ->
+                        log "[r] delete remote document %A" fullPath
                         this.DeleteDocument fullPath    |> ignore
                         DbManager.deleteFile file.Id    |> ignore
                     | None ->
+                        log "[r] download document %A" fullPath
                         let newDb = { QFile.Id = 0; RemoteRoot = remoteRoot; RelativePath = relative; Md5 = "" }
                         DbManager.updateFile newDb              |> ignore
                         this.DowloadDocument fullPath localPath |> ignore
@@ -176,16 +192,12 @@ type CmisClient (settings, folder) as this =
                     rootPath + name
                 else
                     rootPath + "/" + name
-            log "next path => %A" nextPath
-
             match this.IsExist nextPath 0 with
             | None ->
-                log "get path => %A" rootPath
                 let root = session.GetObjectByPath(rootPath) :?> IFolder
                 let properties = new Dictionary<string, Object>();
                 properties.[PropertyIds.Name] <- name
                 properties.[PropertyIds.ObjectTypeId] <- "cmis:folder";
-                log "create dir %A => %A" root.Path name
                 try 
                     root.CreateFolder(properties) |> ignore
                 with ex -> ()
@@ -223,11 +235,12 @@ type CmisClient (settings, folder) as this =
         let doc = this.GetDocument targetPath
         match doc with
         | None ->
-            Failed "File not exist"
+            Failed "file not exist"
         | Some d ->
             d.Delete(true)
             Success 
 
+    (*
     member this.Touch targetPath dateTime = 
         let document = this.GetDocument targetPath
         match document with 
@@ -238,6 +251,10 @@ type CmisClient (settings, folder) as this =
                 ]
             document.UpdateProperties properties |> ignore
         | None -> ()
+
+    member this.TouchLocalPath localPath date = 
+        File.SetLastWriteTime(localPath, date)
+    *)
 
     member this.UpdateDocument targetPath localPath = 
         let date = File.GetLastWriteTime localPath
@@ -253,7 +270,6 @@ type CmisClient (settings, folder) as this =
                 let contentStream = session.ObjectFactory.CreateContentStream(document.Name, int64 length, mimetype, stream);
                 document.SetContentStream(contentStream, true) |> ignore
                 Success
-        this.Touch targetPath date
         (result)
 
     member this.DowloadDocument remotePath downloadPath = 
@@ -268,7 +284,6 @@ type CmisClient (settings, folder) as this =
             use fileStream = new FileStream(downloadPath, FileMode.Create)
             let stream = remoteStream.Stream
             stream.CopyTo(fileStream)
-        File.SetLastWriteTime(downloadPath, last)
 
     member private this.GetMimetype localPath = 
         MimeTypes.MimeTypeMap.GetMimeType (Path.GetExtension localPath)
@@ -289,8 +304,8 @@ type CmisClient (settings, folder) as this =
         try 
             let parent = session.GetObjectByPath (path) :?> IFolder
             let newDoc = parent.CreateDocument(properties, contentStream, VersioningState.Minor |> Nullable)
-            let date = newDoc.LastModificationDate.Value;
-            File.SetLastWriteTime(localPath, date)
+            //let date = newDoc.LastModificationDate.Value;
+            //File.SetLastWriteTime(localPath, date)
             Success
         with ex -> 
             let exist = this.IsExist targetPath 0
@@ -301,12 +316,12 @@ type CmisClient (settings, folder) as this =
                 Failed ex.Message
 
     member this.DownSync() = 
-        log "downsync root = %A" remoteRoot
+        log "[r] down-sync root %A" remoteRoot
         let folder = session.GetObjectByPath(remoteRoot) :?> IFolder
         syncRemoteChild folder
 
     member this.UpSync() =
-        log "upsync root = %A" localRoot
+        log "[c] up-sync root %A" localRoot
         let folder = DirectoryInfo(localRoot)
         syncLocalChild folder
 
