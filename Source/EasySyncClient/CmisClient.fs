@@ -304,8 +304,6 @@ type CmisClient (settings, folder) as this =
         try 
             let parent = session.GetObjectByPath (path) :?> IFolder
             let newDoc = parent.CreateDocument(properties, contentStream, VersioningState.Minor |> Nullable)
-            //let date = newDoc.LastModificationDate.Value;
-            //File.SetLastWriteTime(localPath, date)
             Success
         with ex -> 
             let exist = this.IsExist targetPath 0

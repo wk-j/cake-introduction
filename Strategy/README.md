@@ -1,3 +1,4 @@
+```
 /// Synchronize by checking all folders/files one-by-one.
 /// This strategy is used if the CMIS server does not support the ChangeLog feature.
 /// 
@@ -38,3 +39,4 @@
 
 /// True if all content has been successfully synchronized.
 /// False if anything has failed or been skipped.
+```

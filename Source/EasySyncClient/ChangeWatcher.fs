@@ -52,9 +52,8 @@ type ChangeWatcher()  =
           FileStatus =  status } |> onChange
 
     member private this.Start settings = 
-
-        log "path = %s" settings.Path
-        log "pattern = %s" settings.Pattern
+        log "path %A" settings.Path
+        log "pattern %A" settings.Pattern
 
         let full = DirectoryInfo(settings.Path).FullName
         watcher <- new FileSystemWatcher(full, settings.Pattern)
@@ -70,8 +69,7 @@ type ChangeWatcher()  =
         watcher.Renamed.Add(rename)
 
     member this.Watch settings (onChange: FileChange -> unit) =
-
-        log "watch %s" settings.Path
+        log "watch %A" settings.Path
 
         let full { FullPath = full } = full
         let status { FileStatus = status } = status
@@ -84,10 +82,10 @@ type ChangeWatcher()  =
                 if unNotifiedChanages.Any() then
                     let changes = unNotifiedChanages |> Seq.groupBy full |> Seq.map (first) |> Seq.toList
                     try
-                        log "process => %d" <| changes.Count()  
+                        log "process %A" <| changes.Count()  
                         changes |> List.iter onChange
                     with ex ->
-                        log "error => %s" ex.Message
+                        log "error %A" ex.Message
                     unNotifiedChanages.Clear()
                 processing <- false
         )

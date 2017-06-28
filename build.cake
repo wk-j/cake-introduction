@@ -18,5 +18,15 @@ Task("Run").Does(() => {
     });
 });
 
+Task("Create-Zip")
+    .IsDependentOn("Build")
+    .Does(() => {
+        //var version = System.Diagnostics.FileVersionInfo.GetVersionInfo(@"Source/EasySyncClient.Console/bin/Debug/EasySyncClient.Console.exe").FileVersion;
+        //var version = System.Diagnostics.FileVersionInfo.GetVersionInfo(@"Source/EasySyncClient.Console/bin/Debug/EasySyncClient.Console.exe").FileVersionx;
+        var version = "0.0.1";
+        Zip("Source/EasySyncClient.Console/bin/Debug", $"Release/Zip/EasySyncClient.Console-{version}.zip");
+});
+
+
 var target = Argument("target", "default");
 RunTarget(target);
