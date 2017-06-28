@@ -22,7 +22,7 @@ type UpdateStatus =
     | Skip
 
 let private createSession (settings) = 
-    let url = settings.Url
+    let url = settings.Alfresco
     let user = settings.User
     let pass = settings.Password
 

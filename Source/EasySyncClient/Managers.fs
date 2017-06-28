@@ -62,7 +62,7 @@ type SyncManger() =
         //let endPoint = config.EndPoint
         let folders = config.Folders
 
-        let endPoint = { Url = "http://192.168.0.109:8080/alfresco"; User = "admin"; Password = "admin" }
+        let endPoint = { Alfresco = "http://192.168.0.109:8080/alfresco"; User = "admin"; Password = "admin" }
 
         let folder0 = config.Folders.[0]
 

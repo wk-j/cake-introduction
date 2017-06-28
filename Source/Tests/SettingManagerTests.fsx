@@ -4,7 +4,6 @@ open EasySyncClient.SettingsManager
 open EasySyncClient
 open EasySyncClient.Models
 
-
 let config = SettingsManager.globalConfig()
 
 let syncFolder = {

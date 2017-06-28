@@ -4,6 +4,7 @@ open System
 open LiteDB
 open EasySyncClient.Utility
 open System.Linq
+open EasySyncClient.Models
 
 type FileAction = 
     | Created = 0
@@ -36,7 +37,10 @@ type QTouch = {
 
 module DbManager = 
 
-    let private db = new LiteDatabase("Data/Files.db")
+    let dbPath = SettingsManager.configPath DB
+    log "db path | %s" dbPath
+
+    let private db = new LiteDatabase(dbPath)
     let private fileCollection = db.GetCollection<QFile>("QFiles")
     let private folderCollection = db.GetCollection<QFolder>("QFolders")
     let private touchCollection = db.GetCollection<QTouch>("QTouchs")

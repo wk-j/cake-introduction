@@ -3,7 +3,7 @@ module EasySyncClient.Models
 open System
 
 type EndPoint = {
-    Url: string
+    Alfresco: string
     User: string
     Password: string
 }
@@ -20,3 +20,4 @@ type Config = {
 
 type ConfigFile = 
     | Global
+    | DB

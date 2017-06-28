@@ -48,10 +48,10 @@
     <Compile Include="Models.fs" />
     <Compile Include="ClientModels.fs" />
     <Compile Include="Utility.fs" />
+    <Compile Include="SettingsManager.fs" />
     <Compile Include="DB.fs" />
     <Compile Include="CmisClient.fs" />
     <Compile Include="ChangeWatcher.fs" />
-    <Compile Include="SettingsManager.fs" />
     <Compile Include="Managers.fs" />
   </ItemGroup>
   <ItemGroup>
