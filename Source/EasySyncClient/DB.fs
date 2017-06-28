@@ -57,7 +57,6 @@ module DbManager =
             item
 
     let updateFolder (folder: QFolder) = 
-        log "update folder %A" folder
         if folder.Id > 0 then
             folderCollection.Update folder |> ignore
             folder

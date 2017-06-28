@@ -71,6 +71,7 @@ type CmisClient (settings, folder) as this =
                 let db = DbManager.queryFolder remoteRoot relative
                 match db with
                 | Some folder ->
+                    log "try to delete local folder | %s" dir.FullName
                     dir.Delete(true)
                     DbManager.deleteFolder folder.Id |> ignore
                 | None ->
@@ -102,19 +103,20 @@ type CmisClient (settings, folder) as this =
 
     let rec syncRemoteChild (folder: IFolder) = 
         let childs = folder.GetChildren()
-        for c in childs do
-            if c :? DotCMIS.Client.Impl.Folder then
+        for child in childs do
+            if child :? DotCMIS.Client.Impl.Folder then
                 log "process folder => %A" folder.Path
-                let f = c :?> IFolder    
-                let fullPath = f.Path
+                let remoteFolder = child :?> IFolder    
+                let fullPath = remoteFolder.Path
                 let relative = createRemoteRelative fullPath
                 let localPath = createLocalPath relative
                 if Directory.Exists localPath then
-                    syncRemoteChild f
+                    syncRemoteChild remoteFolder
                 else 
                     let db = DbManager.queryFolder remoteRoot relative 
                     match db with
                     | Some folder ->
+                        log "try to remote remote folder | %s" fullPath    
                         this.DeleteFolder fullPath          |> ignore
                         DbManager.deleteFolder folder.Id    |> ignore
                     | None -> 
@@ -122,9 +124,9 @@ type CmisClient (settings, folder) as this =
                         DbManager.updateFolder newDb            |> ignore
                         Directory.CreateDirectory localPath     |> ignore
                 
-            else if c :? DotCMIS.Client.Impl.Document then
-                let d = c :?> IDocument
-                let fullPath = String.Join("/", d.Paths)
+            else if child :? DotCMIS.Client.Impl.Document then
+                let remoteFile = child :?> IDocument
+                let fullPath = String.Join("/", remoteFile.Paths)
 
                 log "process file => %A" fullPath
 
@@ -132,7 +134,7 @@ type CmisClient (settings, folder) as this =
                 let localPath = createLocalPath relative
 
                 if File.Exists localPath then
-                    if c.LastModificationDate.Value > File.GetLastWriteTime localPath then
+                    if child.LastModificationDate.Value > File.GetLastWriteTime localPath then
                         this.DowloadDocument fullPath localPath |> ignore
                     else
                         this.UpdateDocument fullPath localPath  |> ignore
@@ -183,7 +185,6 @@ type CmisClient (settings, folder) as this =
                 let properties = new Dictionary<string, Object>();
                 properties.[PropertyIds.Name] <- name
                 properties.[PropertyIds.ObjectTypeId] <- "cmis:folder";
-
                 log "create dir %A => %A" root.Path name
                 try 
                     root.CreateFolder(properties) |> ignore
@@ -197,7 +198,6 @@ type CmisClient (settings, folder) as this =
 
     member private this.GetFolder targetPath = 
         try 
-            log "get folder => %s" targetPath
             let folder = session.GetObjectByPath targetPath :?> IFolder
             Some folder
         with ex ->
@@ -205,7 +205,6 @@ type CmisClient (settings, folder) as this =
 
     member private this.GetDocument targetPath = 
         try 
-            log "get document => %s" targetPath
             let doc = session.GetObjectByPath targetPath :?> IDocument
             doc.GetObjectOfLatestVersion(false) |> Some
         with ex ->

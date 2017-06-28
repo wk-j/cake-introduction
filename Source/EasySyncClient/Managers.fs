@@ -53,6 +53,9 @@ type ChangeManager(config : SyncFolder, cmis: CmisClient) =
         result |> ignore
 
 type SyncManger() = 
+
+    let timer = new Timers.Timer(10000.)
+
     member this.StartSync() = 
 
         let config = SettingsManager.globalConfig()
@@ -68,5 +71,13 @@ type SyncManger() =
         //let change = ChangeManager(folder0, client)
         //change.StartWatch()
 
-        client.DownSync()
-        //client.UpSync()
+        let startSync x = 
+            timer.Stop()
+            client.DownSync()
+            Thread.Sleep 10000
+            client.UpSync()
+            timer.Start()
+
+        timer.Elapsed.Add(startSync)
+        timer.Start()
+        timer.AutoReset <- false
