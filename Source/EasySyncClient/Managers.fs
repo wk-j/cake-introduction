@@ -11,7 +11,6 @@ open EasySyncClient.FileWatcher
 open EasySyncClient.ClientModels
 open EasySyncClient.DB
 open EasySyncClient.Utility
-open EasySyncClient.CmisManager
 open EasySyncClient.CmisClient
 open NLog
 
@@ -40,29 +39,17 @@ type ChangeManager(config : SyncFolder, cmis: CmisClient) =
 
         let md5 { Md5 = md5 } = md5
 
-        let update() = 
-            let currentMd5 = Utility.checkMd5 localPath
-            let file = DbManager.queryFile localPath 
-            let md5 = file |> md5
-            if currentMd5 <> md5 then
-                let newFile = { file with Md5 = currentMd5 }
-                DbManager.updateFile newFile |> ignore
-                cmis.UpdateDocument targetPath localPath 
-            else
-                Skip
-
         let result = 
             match change.FileStatus with
             | Created -> 
-                update()
+                Skip
             | Deleted -> 
                 cmis.DeleteDocument targetPath
-                //createAction "" FileAction.Deleted
             | Renamed (old, n) -> 
-                //createAction  n FileAction.Renamed
-                Failed "Not supported"
+                let newName = Path.GetFileName(n)
+                cmis.Rename targetPath newName
             | Changed -> 
-                update()
+                Skip
         result |> ignore
 
 type SyncManger() = 
@@ -78,9 +65,8 @@ type SyncManger() =
 
         let client = CmisClient(endPoint, folder0)
 
-        let change = ChangeManager(folder0, client)
-        change.StartWatch()
+        //let change = ChangeManager(folder0, client)
+        //change.StartWatch()
 
-        let cmis = CmisManager(endPoint, folder0)
-        cmis.StartDownSync()
-        //cmis.StartUpSync()
+        client.DownSync()
+        //client.UpSync()

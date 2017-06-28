@@ -12,24 +12,18 @@ type FileAction =
     | Deleted = 3
     | Changed = 4
 
-type Status = 
-    | Initialize = 0
-    | ProcessSuccess = 1
-    | ProcessFailed = 2
+[<CLIMutable>]
+type QFolder = {
+    Id : int
+    RemoteRoot : string
+    RelativePath : string
+}
 
 [<CLIMutable>]
 type QFile = {
     Id : int
-    LocalPath : string
-    //FileAction: FileAction
-    //Status: Status
-    //OriginalPath : string
-    //NewPath : string
-    //CreationTime: DateTime
-    //LastWriteTime: DateTime
-    //LastAccessTime: DateTime
-    //RemoteRoot: string
-    //LocalRoot: string
+    RemoteRoot : string
+    RelativePath : string
     Md5 : string
 }
 
@@ -37,13 +31,14 @@ type QFile = {
 type QTouch = {
     Id : int
     LastTouchTime : DateTime
-    LocalPath : string
+    LocalRoot : string
 }
 
 module DbManager = 
 
     let private db = new LiteDatabase("Data/Files.db")
     let private fileCollection = db.GetCollection<QFile>("QFiles")
+    let private folderCollection = db.GetCollection<QFolder>("QFolders")
     let private touchCollection = db.GetCollection<QTouch>("QTouchs")
 
     let updateTouch(item: QTouch) = 
@@ -54,14 +49,39 @@ module DbManager =
         (item)
 
     let queryTouch localPath = 
-        let item = touchCollection.Find(fun x -> x.LocalPath = localPath).FirstOrDefault()
+        let item = touchCollection.Find(fun x -> x.LocalRoot = localPath).FirstOrDefault()
         match obj.ReferenceEquals(null, item) with
         | true -> 
-             { QTouch.Id = 0; LocalPath = localPath; LastTouchTime = DateTime.MinValue }
+             { QTouch.Id = 0; LocalRoot = localPath; LastTouchTime = DateTime.MinValue }
         | false ->
             item
 
-    let updateFile(file:QFile) = 
+    let updateFolder (folder: QFolder) = 
+        log "update folder %A" folder
+        if folder.Id > 0 then
+            folderCollection.Update folder |> ignore
+            folder
+        else
+            folderCollection.Insert folder  |> ignore
+            folder
+
+    let deleteFolder (id:int) = 
+        let bson = LiteDB.BsonValue id
+        folderCollection.Delete bson
+
+    let deleteFile (id: int) = 
+        let bson = LiteDB.BsonValue id
+        fileCollection.Delete bson
+
+    let queryFolder remoteRoot relativePath =
+        let fst = folderCollection.Find(fun x -> x.RemoteRoot = remoteRoot && x.RelativePath = relativePath).FirstOrDefault()
+        match obj.ReferenceEquals(null, fst) with
+        | true ->
+            None
+        | false ->
+            Some fst
+
+    let updateFile(file: QFile) = 
         if file.Id > 0 then
             fileCollection.Update(file) |> ignore
             file
@@ -69,11 +89,10 @@ module DbManager =
             fileCollection.Insert(file) |> ignore
             file
 
-    let queryFile localPath = 
-        let fst = fileCollection.Find(fun x -> x.LocalPath = localPath).FirstOrDefault()
-        match obj.ReferenceEquals(null, fst) with
-        | true ->
-            let file = { Id  = 0 ; LocalPath = localPath; Md5 =  "" }
-            updateFile file
-        | false ->
-            fst
+    let queryFile remoteRoot relativePath = 
+        let first = fileCollection.Find(fun x -> x.RemoteRoot = remoteRoot && x.RelativePath = relativePath).FirstOrDefault()
+        match obj.ReferenceEquals(null , first) with
+        | true -> 
+            None
+        | false -> 
+            Some first

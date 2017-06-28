@@ -8,18 +8,13 @@ open System.Collections.Generic
 open EasySyncClient.Models
 open EasySyncClient.ClientModels
 open EasySyncClient.Utility
+open EasySyncClient.DB
 open System.Threading
 open System.Text
 open System.IO
 open System
 open System.Web
 open System.Linq
-
-type SyncObject =
-    | File of FullPath * RelativePath
-    | Folder of FullPath * RelativePath
-and FullPath = FullPath of string
-and RelativePath = RelativePath of string
 
 type UpdateStatus =
     | Success
@@ -41,35 +36,116 @@ let private createSession (settings) =
     let factory = SessionFactory.NewInstance()
     factory.CreateSession(parameters)
 
-type CmisClient (settings, folder) = 
-    let meetObject = new Event<SyncObject>()
-    let onMeetObject = meetObject.Publish
+type CmisClient (settings, folder) as this = 
+
     let remoteRoot = folder.RemotePath
     let localRoot = folder.LocalPath
 
     let session = createSession(settings)
 
-    let createRelative root (FullPath fullPath) = 
-        fullPath.Replace(root, "").TrimStart('/') |> RelativePath
+    let createRemoteRelative (fullPath: string) = 
+        fullPath.Replace(remoteRoot, "").TrimStart('/') 
 
-    let rec syncChild (folder: IFolder) = 
+    let createLocalRelative (fullPath: string) = 
+        fullPath.Replace(localRoot, "").TrimStart('/').TrimStart('\\')
+
+    let createLocalPath relative =
+        Path.Combine(folder.LocalPath, relative)
+
+    let createRemotePath (relative: string) = 
+        let trim = relative.TrimStart('/').TrimStart('\\').Replace('\\', '/')
+        remoteRoot + "/" + trim
+
+    let rec syncLocalChild (folder: DirectoryInfo) = 
+        let dirs = folder.GetDirectories()
+        let files = folder.GetFiles()
+        for dir in dirs do
+            let fullPath = dir.FullName
+            let relative = createLocalRelative fullPath
+            let remotePath = createRemotePath relative
+            let remoteFolder = this.GetFolder remotePath
+            match remoteFolder with
+            | Some folder ->
+                syncLocalChild dir
+            | None ->
+                let db = DbManager.queryFolder remoteRoot relative
+                match db with
+                | Some folder ->
+                    dir.Delete(true)
+                    DbManager.deleteFolder folder.Id |> ignore
+                | None ->
+                    this.CreateFolders remotePath |> ignore
+                    let newFolder = { QFolder.Id = 0; RemoteRoot = remoteRoot; RelativePath = relative }
+                    DbManager.updateFolder newFolder |> ignore
+                    syncLocalChild dir
+
+        for file in files.Where(fun x -> x.Name.StartsWith(".") |> not) do
+            let fullPath = file.FullName
+            let relative = createLocalRelative fullPath
+            let remotePath = createRemotePath relative
+            let remote : IDocument option  = this.GetDocument remotePath
+            match remote with
+            | None ->
+                let db = DbManager.queryFile remoteRoot relative
+                match db with
+                | None ->
+                    this.UpdateDocument remotePath fullPath |> ignore
+                    let newFile = { QFile.Id = 0; RemoteRoot = remoteRoot; RelativePath = relative; Md5 = "" }
+                    DbManager.updateFile newFile |> ignore
+                | Some file ->
+                    File.Delete fullPath
+                    DbManager.deleteFile file.Id |> ignore
+            | Some file ->
+                let last = file.LastModificationDate.Value
+                if File.GetLastWriteTime(fullPath) < last then
+                    this.UpdateDocument  remotePath fullPath |> ignore
+
+    let rec syncRemoteChild (folder: IFolder) = 
         let childs = folder.GetChildren()
         for c in childs do
             if c :? DotCMIS.Client.Impl.Folder then
+                log "process folder => %A" folder.Path
                 let f = c :?> IFolder    
-                let path = f.Path
-                let full =  FullPath path
-                let relative = createRelative remoteRoot full 
-                meetObject.Trigger <| Folder (full, relative)
-                syncChild f
+                let fullPath = f.Path
+                let relative = createRemoteRelative fullPath
+                let localPath = createLocalPath relative
+                if Directory.Exists localPath then
+                    syncRemoteChild f
+                else 
+                    let db = DbManager.queryFolder remoteRoot relative 
+                    match db with
+                    | Some folder ->
+                        this.DeleteFolder fullPath          |> ignore
+                        DbManager.deleteFolder folder.Id    |> ignore
+                    | None -> 
+                        let newDb = { Id = 0; RemoteRoot = remoteRoot; RelativePath = relative }
+                        DbManager.updateFolder newDb            |> ignore
+                        Directory.CreateDirectory localPath     |> ignore
+                
             else if c :? DotCMIS.Client.Impl.Document then
                 let d = c :?> IDocument
-                let path = String.Join("/", d.Paths)
-                let full = FullPath path
-                let relative = createRelative remoteRoot full 
-                meetObject.Trigger <| File (full, relative)
+                let fullPath = String.Join("/", d.Paths)
 
-    member this.OnMeetObject = onMeetObject
+                log "process file => %A" fullPath
+
+                let relative = createRemoteRelative fullPath
+                let localPath = createLocalPath relative
+
+                if File.Exists localPath then
+                    if c.LastModificationDate.Value > File.GetLastWriteTime localPath then
+                        this.DowloadDocument fullPath localPath |> ignore
+                    else
+                        this.UpdateDocument fullPath localPath  |> ignore
+                else
+                    let db = DbManager.queryFile remoteRoot relative
+                    match db with
+                    | Some file ->
+                        this.DeleteDocument fullPath    |> ignore
+                        DbManager.deleteFile file.Id    |> ignore
+                    | None ->
+                        let newDb = { QFile.Id = 0; RemoteRoot = remoteRoot; RelativePath = relative; Md5 = "" }
+                        DbManager.updateFile newDb              |> ignore
+                        this.DowloadDocument fullPath localPath |> ignore
 
     member private this.IsExist path count = 
         try 
@@ -85,6 +161,11 @@ type CmisClient (settings, folder) =
     member this.MoveFile originalPath newPath  = 
         let doc = session.GetObjectByPath(originalPath)
         ()
+
+    member this.DeleteFolder targetPath = 
+        let folder = session.GetObjectByPath targetPath :?> IFolder
+        folder.DeleteTree(true, UnfileObject.Delete |> Nullable, true) |> ignore
+        Success
 
     member this.CreateFolders (targetPath: string) = 
         let createDir rootPath name = 
@@ -113,6 +194,14 @@ type CmisClient (settings, folder) =
 
         let sections = splitWith "/" (targetPath.TrimStart('/'))
         sections |> Array.fold (createDir) "/"
+
+    member private this.GetFolder targetPath = 
+        try 
+            log "get folder => %s" targetPath
+            let folder = session.GetObjectByPath targetPath :?> IFolder
+            Some folder
+        with ex ->
+            None
 
     member private this.GetDocument targetPath = 
         try 
@@ -159,8 +248,7 @@ type CmisClient (settings, folder) =
             | None -> 
                 this.CreateDocument targetPath localPath
             | Some document -> 
-                log "update document %A" localPath
-                let mimetype = "plain/text"
+                let mimetype = MimeTypes.MimeTypeMap.GetMimeType(Path.GetExtension(localPath))
                 use stream = new FileStream(localPath, FileMode.Open, FileAccess.Read)
                 let length = stream.Length
                 let contentStream = session.ObjectFactory.CreateContentStream(document.Name, int64 length, mimetype, stream);
@@ -172,22 +260,16 @@ type CmisClient (settings, folder) =
     member this.DowloadDocument remotePath downloadPath = 
         let localInfo = FileInfo(downloadPath)
         let remote = session.GetObjectByPath(remotePath) :?> IDocument
-        if localInfo.Exists |> not then
-            this.StartDownload remote downloadPath
-        else 
-            let modify = File.GetLastWriteTime(downloadPath)
-            if (remote.LastModificationDate.Value > modify) then
-                log "skip change => %s" downloadPath
-            else
-                this.StartDownload remote downloadPath
+        this.StartDownload remote downloadPath
 
     member private this.StartDownload (remote : IDocument) downloadPath = 
+        let last = remote.LastModificationDate.Value
         do
             let remoteStream = remote.GetContentStream()
             use fileStream = new FileStream(downloadPath, FileMode.Create)
             let stream = remoteStream.Stream
             stream.CopyTo(fileStream)
-        File.SetLastWriteTime(downloadPath, remote.LastModificationDate.Value)
+        File.SetLastWriteTime(downloadPath, last)
 
     member private this.GetMimetype localPath = 
         MimeTypes.MimeTypeMap.GetMimeType (Path.GetExtension localPath)
@@ -207,10 +289,8 @@ type CmisClient (settings, folder) =
 
         try 
             let parent = session.GetObjectByPath (path) :?> IFolder
-            log "create document %A => %A" parent.Path name 
             let newDoc = parent.CreateDocument(properties, contentStream, VersioningState.Minor |> Nullable)
             let date = newDoc.LastModificationDate.Value;
-            log "last modify %A" date
             File.SetLastWriteTime(localPath, date)
             Success
         with ex -> 
@@ -222,33 +302,12 @@ type CmisClient (settings, folder) =
                 Failed ex.Message
 
     member this.DownSync() = 
-        log "down sync root = %A" remoteRoot
+        log "downsync root = %A" remoteRoot
         let folder = session.GetObjectByPath(remoteRoot) :?> IFolder
-        syncChild folder
+        syncRemoteChild folder
 
     member this.UpSync() =
-        let uncurry f (x,y) = f x y 
-        let root = DirectoryInfo(folder.LocalPath)
-        let convertPath (dir: FileInfo) = 
-            let rel = 
-                dir.FullName.Replace(root.FullName, "")
-                    .TrimStart('/')
-                    .TrimStart('\\')
-                    .Replace("\\", "/")
-            let localPath = dir.FullName
-            let remotePath = folder.RemotePath + "/" + rel
-            (remotePath , localPath)
+        log "upsync root = %A" localRoot
+        let folder = DirectoryInfo(localRoot)
+        syncLocalChild folder
 
-        let rec syncFolder(dir: DirectoryInfo) = 
-            let dirs = dir.GetDirectories()
-            for child in dir.GetDirectories() 
-                do syncFolder child  |> ignore
-
-            let un = uncurry this.UpdateDocument
-            dir.GetFiles() 
-            |> Array.filter (fun x -> x.Name.StartsWith(".") |> not) 
-            |> Array.map (convertPath >> un)
-
-        let folder = DirectoryInfo(folder.LocalPath)
-        let x = syncFolder(root)
-        ()

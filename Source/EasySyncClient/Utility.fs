@@ -13,3 +13,6 @@ let checkMd5 localFile =
     use stream = File.OpenRead(localFile)
     let by = md5.ComputeHash(stream)
     BitConverter.ToString(by).Replace("-","‌​").ToLower()
+
+let toRemoteRelative (path: string)  =
+    path.Replace('\\', '/').TrimStart('/')
